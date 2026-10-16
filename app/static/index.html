@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No Low Blows</title>
+<style>
+  :root {
+    --bg: #f5f3ef; --panel: #ffffff; --ink: #1c1a18; --muted: #6a645c; --line: #e2dcd2;
+    --clean: #23824f; --low: #c53030; --review: #b7791f; --dq: #5a5a5a; --accent: #1f5fbf; --badge-ink: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #131210; --panel: #1d1b18; --ink: #f0ebe4; --muted: #a39b90; --line: #36312b;
+      --clean: #4cc286; --low: #f06a6a; --review: #e6ad55; --dq: #9a9a9a; --accent: #74a6f2; --badge-ink: #111; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 14px 16px; background: var(--panel); border-bottom: 6px solid; border-image: repeating-linear-gradient(90deg, var(--ink) 0 14px, var(--panel) 14px 28px) 6; }
+  header h1 { margin: 0; font-size: 22px; } header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  #health { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .notice { text-align: center; font-size: 12.5px; color: var(--muted); padding: 6px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  main { max-width: 1120px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 320px 1fr; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .alert-btn { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-bottom: 8px; cursor: pointer; }
+  .alert-btn:hover, .alert-btn:focus-visible { border-color: var(--accent); outline: none; }
+  .alert-btn b { display: block; font-size: 11.5px; color: var(--muted); }
+  textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 90px; }
+  .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+  button.go { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 9px 14px; background: var(--low); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .toggle { display: flex; gap: 8px; align-items: center; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; margin-bottom: 12px; font-size: 14px; }
+  #timeline > * { margin-bottom: 10px; }
+  .tool { font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; color: var(--muted); border-left: 3px solid var(--line); padding-left: 8px; word-break: break-word; }
+  .ruling { border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .ruling.CLEAN { border-color: var(--clean); } .ruling.LOW_BLOW { border-color: var(--low); }
+  .ruling.REF_REVIEW { border-color: var(--review); } .ruling.DISQUALIFIED { border-color: var(--dq); }
+  .badge { display: inline-block; font-weight: 800; letter-spacing: .04em; color: var(--badge-ink); border-radius: 7px; padding: 2px 10px; font-size: 13px; }
+  .badge.CLEAN { background: var(--clean); } .badge.LOW_BLOW { background: var(--low); }
+  .badge.REF_REVIEW { background: var(--review); } .badge.DISQUALIFIED { background: var(--dq); }
+  .punch { font-weight: 700; margin: 6px 0 2px; } .why { color: var(--muted); font-size: 13.5px; }
+  .meters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; font-size: 12px; }
+  @media (max-width: 520px) { .meters { grid-template-columns: 1fr; } }
+  .meter { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .meter .bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .meter .bar i { display: block; height: 100%; background: var(--accent); }
+  .ms { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .score { display: flex; flex-wrap: wrap; gap: 8px; }
+  .score span { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
+  .report { white-space: pre-wrap; }
+  .hold { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; border: 1px solid var(--review); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .hold button { font: inherit; border-radius: 8px; padding: 5px 10px; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+  .hold button.ok { border-color: var(--clean); } .hold button.no { border-color: var(--low); }
+  .muted { color: var(--muted); } .err { color: var(--low); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥊 No Low Blows</h1>
+  <p>An AI incident responder that throws containment punches, and a 2-billion-parameter referee that checks every punch before it lands.</p>
+  <div id="health">Checking the referee…</div>
+</header>
+<div class="notice">Demo only: every alert, person and system is AI-generated test data for a fictional company, and every containment action is simulated.</div>
+<main>
+  <aside class="card">
+    <h2>Fight card</h2>
+    <label class="toggle"><input type="checkbox" id="hothead"> 🔥 Hot-headed fighter (tries to punch everything)</label>
+    <div id="alerts"><span class="muted">Loading…</span></div>
+    <h2 style="margin-top:14px">Or write your own alert</h2>
+    <textarea id="custom" maxlength="1500" placeholder="e.g. User bking clicked a link from payroll@acme-pay.example and entered their password. Ten minutes later bking signed in from 203.0.113.80 and downloaded 4 GB from fs-01."></textarea>
+    <div class="row"><button class="go" id="customGo" type="button">Ring the bell</button></div>
+  </aside>
+  <section>
+    <div class="card" id="ring">
+      <h2>Ringside</h2>
+      <div id="timeline"><p class="muted">Pick a fight. The agent investigates with Amazon Bedrock and proposes punches: lock an account, isolate a host, block an IP. Before each one lands, Strands Decider 2B checks it's grounded in the evidence, aimed at the right target and proportionate.<br><br>✅ <b>Clean punch</b> runs. 🛑 <b>Low blow</b> goes back to the agent with feedback. 🟨 <b>Ref's review</b> waits for you.</p></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Ref's review: your call</h2>
+      <div id="pending"><p class="muted">Nothing waiting.</p></div>
+    </div>
+  </section>
+</main>
+<script>
+(function () {
+  var LABEL = { CLEAN: '✅ CLEAN PUNCH', LOW_BLOW: '🛑 LOW BLOW', REF_REVIEW: "🟨 REF'S REVIEW", DISQUALIFIED: '⛔ DISQUALIFIED' };
+  var VERB = { lock_account: 'lock account', isolate_host: 'isolate host', block_ip: 'block IP' };
+  var busy = false;
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function api(path, body) {
+    return fetch('api/' + path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {})
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || r.statusText); return j; }); });
+  }
+  function meter(label, value, pct) {
+    var m = el('div', 'meter'); m.appendChild(el('div', null, label)); m.appendChild(el('b', null, value));
+    var bar = el('div', 'bar'), fill = el('i'); fill.style.width = Math.round(pct * 100) + '%'; bar.appendChild(fill); m.appendChild(bar);
+    return m;
+  }
+  function rulingCard(r) {
+    var c = el('div', 'ruling ' + r.call);
+    c.appendChild(el('span', 'badge ' + r.call, LABEL[r.call] || r.call));
+    c.appendChild(el('div', 'punch', 'Punch: ' + (VERB[r.tool] || r.tool) + ' → ' + (r.target || '(no target)') + (r.protected ? '  🛡 protected asset' : '')));
+    c.appendChild(el('div', 'why', 'Referee: ' + r.reason));
+    var a = r.answers || {};
+    if (a.target_grounded) {
+      var ms = el('div', 'meters');
+      ms.appendChild(meter('Grounded in evidence?', Math.round(a.target_grounded.noul * 100) + '% yes', a.target_grounded.noul));
+      ms.appendChild(meter('Target role', a.target_role.choice + ' · ' + Math.round(a.target_role.confidence * 100) + '% sure', a.target_role.confidence));
+      ms.appendChild(meter('Proportionate?', a.proportionality.choice + ' · ' + Math.round(a.proportionality.confidence * 100) + '% sure', a.proportionality.confidence));
+      c.appendChild(ms);
+    }
+    if (r.wall_ms) c.appendChild(el('div', 'ms', 'Decided by Strands Decider 2B in ' + Math.round(r.wall_ms) + ' ms' + (r.latency_ms ? ' (model ' + Math.round(r.latency_ms) + ' ms)' : '')));
+    return c;
+  }
+  function render(res) {
+    var t = document.getElementById('timeline'); t.textContent = '';
+    t.appendChild(el('div', 'muted', (res.hothead ? '🔥 Hot-headed fighter · ' : '') + res.alert_id + ' · ' + res.seconds + ' s · agent: ' + res.model));
+    res.events.forEach(function (e) {
+      if (e.kind === 'ruling') t.appendChild(rulingCard(e));
+      else t.appendChild(el('div', 'tool', '🔎 ' + e.name + '(' + JSON.stringify(e.input) + ') → ' + e.output));
+    });
+    var s = el('div', 'score'), sc = res.score;
+    [['✅ clean', sc.CLEAN], ['🛑 low blows caught', sc.LOW_BLOW], ["🟨 ref's review", sc.REF_REVIEW], ['⛔ disqualified', sc.DISQUALIFIED]]
+      .forEach(function (x) { s.appendChild(el('span', null, x[0] + ': ' + x[1])); });
+    s.appendChild(el('span', null, '⏱ referee total: ' + res.referee_ms_total + ' ms'));
+    t.appendChild(s);
+    if (res.error) t.appendChild(el('p', 'err', 'The agent hit an error: ' + res.error));
+    if (res.reply) { t.appendChild(el('h2', null, "Fighter's report")); t.appendChild(el('div', 'report', res.reply)); }
+    loadPending();
+  }
+  function fight(body) {
+    if (busy) return; busy = true; setBusy(true);
+    body.hothead = document.getElementById('hothead').checked;
+    var t = document.getElementById('timeline'); t.textContent = ''; t.appendChild(el('p', 'muted', '🔔 Round in progress… the referee is watching every punch.'));
+    api('fight', body).then(render).catch(function (e) { t.textContent = ''; t.appendChild(el('p', 'err', 'Could not run the fight: ' + e.message)); })
+      .then(function () { busy = false; setBusy(false); });
+  }
+  function setBusy(b) { document.querySelectorAll('button').forEach(function (x) { x.disabled = b; }); }
+  function loadPending() {
+    api('pending').then(function (items) {
+      var p = document.getElementById('pending'); p.textContent = '';
+      if (!items.length) { p.appendChild(el('p', 'muted', 'Nothing waiting.')); return; }
+      items.forEach(function (it) {
+        var row = el('div', 'hold');
+        row.appendChild(el('span', null, it.alert_id + ': ' + (VERB[it.tool] || it.tool) + ' → ' + it.target + '. ' + it.reason));
+        var btns = el('span');
+        [['Approve', 'ok', true], ['Reject', 'no', false]].forEach(function (b) {
+          var x = el('button', b[1], b[0]); x.type = 'button';
+          x.addEventListener('click', function () { api('approve', { id: it.id, approve: b[2] }).then(function (r) { row.textContent = r.outcome; }); });
+          btns.appendChild(x);
+        });
+        row.appendChild(btns); p.appendChild(row);
+      });
+    });
+  }
+  api('alerts').then(function (list) {
+    var box = document.getElementById('alerts'); box.textContent = '';
+    list.forEach(function (a) {
+      var b = el('button', 'alert-btn'); b.type = 'button';
+      b.appendChild(el('b', null, a.id + ' · ' + a.source)); b.appendChild(el('span', null, a.title));
+      b.addEventListener('click', function () { fight({ alert_id: a.id }); });
+      box.appendChild(b);
+    });
+  });
+  document.getElementById('customGo').addEventListener('click', function () {
+    var v = document.getElementById('custom').value.trim(); if (v) fight({ custom_text: v });
+  });
+  api('health').then(function (h) {
+    var d = h.decider || {};
+    document.getElementById('health').textContent = d.error ? '⚠ Referee offline: ' + d.error
+      : 'Referee: ' + (d.checkpoint || 'Strands Decider 2B') + ' on ' + (d.device || '?') + ' · Fighter: ' + h.bedrock_model;
+  }).catch(function () { document.getElementById('health').textContent = '⚠ Could not reach the server.'; });
+  loadPending();
+})();
+</script>
+</body>
+</html>
