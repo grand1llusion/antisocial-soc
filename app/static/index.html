@@ -7,11 +7,11 @@
 <style>
   :root {
     --bg: #f5f3ef; --panel: #ffffff; --ink: #1c1a18; --muted: #6a645c; --line: #e2dcd2;
-    --clean: #23824f; --low: #c53030; --review: #b7791f; --dq: #5a5a5a; --accent: #1f5fbf; --badge-ink: #fff;
+    --clean: #23824f; --low: #c53030; --review: #b7791f; --dq: #5a5a5a; --fixed: #7b3fb5; --accent: #1f5fbf; --badge-ink: #fff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --bg: #131210; --panel: #1d1b18; --ink: #f0ebe4; --muted: #a39b90; --line: #36312b;
-      --clean: #4cc286; --low: #f06a6a; --review: #e6ad55; --dq: #9a9a9a; --accent: #74a6f2; --badge-ink: #111; }
+      --clean: #4cc286; --low: #f06a6a; --review: #e6ad55; --dq: #9a9a9a; --fixed: #b98ae6; --accent: #74a6f2; --badge-ink: #111; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -36,12 +36,19 @@
   .ruling { border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; }
   .ruling.CLEAN { border-color: var(--clean); } .ruling.LOW_BLOW { border-color: var(--low); }
   .ruling.REF_REVIEW { border-color: var(--review); } .ruling.DISQUALIFIED { border-color: var(--dq); }
+  .ruling.FIXED_FIGHT { border-color: var(--fixed); } .badge.FIXED_FIGHT { background: var(--fixed); }
   .badge { display: inline-block; font-weight: 800; letter-spacing: .04em; color: var(--badge-ink); border-radius: 7px; padding: 2px 10px; font-size: 13px; }
   .badge.CLEAN { background: var(--clean); } .badge.LOW_BLOW { background: var(--low); }
   .badge.REF_REVIEW { background: var(--review); } .badge.DISQUALIFIED { background: var(--dq); }
   .punch { font-weight: 700; margin: 6px 0 2px; } .why { color: var(--muted); font-size: 13.5px; }
-  .meters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; font-size: 12px; }
+  .meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; font-size: 12px; }
+  @media (max-width: 900px) { .meters { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 520px) { .meters { grid-template-columns: 1fr; } }
+  .weight { display: inline-block; margin-left: 8px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; }
+  .foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .badcall { font: inherit; font-size: 12px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+  .badcall select { font: inherit; font-size: 12px; }
+  #health a { color: var(--accent); }
   .meter { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
   .meter .bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 4px; overflow: hidden; }
   .meter .bar i { display: block; height: 100%; background: var(--accent); }
@@ -60,6 +67,7 @@
   <h1>🥊 No Low Blows</h1>
   <p>An AI incident responder that throws containment punches, and a 2-billion-parameter referee that checks every punch before it lands.</p>
   <div id="health">Checking the referee…</div>
+  <div style="font-size:12px;margin-top:2px"><a href="api/audit" style="color:var(--accent)">⬇ Download the audit log</a></div>
 </header>
 <div class="notice">Demo only: every alert, person and system is AI-generated test data for a fictional company, and every containment action is simulated.</div>
 <main>
@@ -77,6 +85,10 @@
       <div id="timeline"><p class="muted">Pick a fight. The agent investigates with Amazon Bedrock and proposes punches: lock an account, isolate a host, block an IP. Before each one lands, Strands Decider 2B checks it's grounded in the evidence, aimed at the right target and proportionate.<br><br>✅ <b>Clean punch</b> runs. 🛑 <b>Low blow</b> goes back to the agent with feedback. 🟨 <b>Ref's review</b> waits for you.</p></div>
     </div>
     <div class="card" style="margin-top:16px">
+      <h2>Punches that landed (undo)</h2>
+      <div id="landed"><p class="muted">Nothing has landed yet.</p></div>
+    </div>
+    <div class="card" style="margin-top:16px">
       <h2>Ref's review: your call</h2>
       <div id="pending"><p class="muted">Nothing waiting.</p></div>
     </div>
@@ -84,7 +96,7 @@
 </main>
 <script>
 (function () {
-  var LABEL = { CLEAN: '✅ CLEAN PUNCH', LOW_BLOW: '🛑 LOW BLOW', REF_REVIEW: "🟨 REF'S REVIEW", DISQUALIFIED: '⛔ DISQUALIFIED' };
+  var LABEL = { CLEAN: '✅ CLEAN PUNCH', LOW_BLOW: '🛑 LOW BLOW', FIXED_FIGHT: '🎭 FIXED FIGHT', REF_REVIEW: "🟨 REF'S REVIEW", DISQUALIFIED: '⛔ DISQUALIFIED' };
   var VERB = { lock_account: 'lock account', isolate_host: 'isolate host', block_ip: 'block IP' };
   var busy = false;
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -97,9 +109,26 @@
     var bar = el('div', 'bar'), fill = el('i'); fill.style.width = Math.round(pct * 100) + '%'; bar.appendChild(fill); m.appendChild(bar);
     return m;
   }
+  function badCall(r) {
+    var box = el('span'), b = el('button', 'badcall', '👎 Bad call? Instant replay'); b.type = 'button';
+    b.addEventListener('click', function () {
+      box.textContent = '';
+      var sel = el('select', 'badcall'); sel.setAttribute('aria-label', 'What should the call have been?');
+      [['', 'Should have been…'], ['allow', 'allowed'], ['block', 'blocked'], ['review', 'sent to a human']].forEach(function (o) {
+        var opt = el('option', null, o[1]); opt.value = o[0]; sel.appendChild(opt); });
+      sel.addEventListener('change', function () {
+        if (!sel.value) return;
+        api('feedback', { ruling_id: r.id, correct: sel.value }).then(function (res) { box.textContent = '✔ ' + res.message; })
+          .catch(function (e) { box.textContent = 'Could not save: ' + e.message; });
+      });
+      box.appendChild(sel);
+    });
+    box.appendChild(b); return box;
+  }
   function rulingCard(r) {
     var c = el('div', 'ruling ' + r.call);
     c.appendChild(el('span', 'badge ' + r.call, LABEL[r.call] || r.call));
+    if (r.weight) c.appendChild(el('span', 'weight', '🥊 ' + r.weight + 'weight punch'));
     c.appendChild(el('div', 'punch', 'Punch: ' + (VERB[r.tool] || r.tool) + ' → ' + (r.target || '(no target)') + (r.protected ? '  🛡 protected asset' : '')));
     c.appendChild(el('div', 'why', 'Referee: ' + r.reason));
     var a = r.answers || {};
@@ -108,9 +137,13 @@
       ms.appendChild(meter('Grounded in evidence?', Math.round(a.target_grounded.noul * 100) + '% yes', a.target_grounded.noul));
       ms.appendChild(meter('Target role', a.target_role.choice + ' · ' + Math.round(a.target_role.confidence * 100) + '% sure', a.target_role.confidence));
       ms.appendChild(meter('Proportionate?', a.proportionality.choice + ' · ' + Math.round(a.proportionality.confidence * 100) + '% sure', a.proportionality.confidence));
+      if (a.evidence_injection) ms.appendChild(meter('Instructions aimed at the AI?', Math.round(a.evidence_injection.noul * 100) + '% yes', a.evidence_injection.noul));
       c.appendChild(ms);
     }
-    if (r.wall_ms) c.appendChild(el('div', 'ms', 'Decided by Strands Decider 2B in ' + Math.round(r.wall_ms) + ' ms' + (r.latency_ms ? ' (model ' + Math.round(r.latency_ms) + ' ms)' : '')));
+    var foot = el('div', 'foot');
+    foot.appendChild(el('div', 'ms', r.wall_ms ? 'Decided by Strands Decider 2B in ' + Math.round(r.wall_ms) + ' ms' + (r.latency_ms ? ' (model ' + Math.round(r.latency_ms) + ' ms)' : '') : ''));
+    foot.appendChild(badCall(r));
+    c.appendChild(foot);
     return c;
   }
   function render(res) {
@@ -121,13 +154,13 @@
       else t.appendChild(el('div', 'tool', '🔎 ' + e.name + '(' + JSON.stringify(e.input) + ') → ' + e.output));
     });
     var s = el('div', 'score'), sc = res.score;
-    [['✅ clean', sc.CLEAN], ['🛑 low blows caught', sc.LOW_BLOW], ["🟨 ref's review", sc.REF_REVIEW], ['⛔ disqualified', sc.DISQUALIFIED]]
+    [['✅ clean', sc.CLEAN], ['🛑 low blows caught', sc.LOW_BLOW], ['🎭 fixed fights', sc.FIXED_FIGHT || 0], ["🟨 ref's review", sc.REF_REVIEW], ['⛔ disqualified', sc.DISQUALIFIED]]
       .forEach(function (x) { s.appendChild(el('span', null, x[0] + ': ' + x[1])); });
     s.appendChild(el('span', null, '⏱ referee total: ' + res.referee_ms_total + ' ms'));
     t.appendChild(s);
     if (res.error) t.appendChild(el('p', 'err', 'The agent hit an error: ' + res.error));
     if (res.reply) { t.appendChild(el('h2', null, "Fighter's report")); t.appendChild(el('div', 'report', res.reply)); }
-    loadPending();
+    loadPending(); loadLanded();
   }
   function fight(body) {
     if (busy) return; busy = true; setBusy(true);
@@ -137,6 +170,22 @@
       .then(function () { busy = false; setBusy(false); });
   }
   function setBusy(b) { document.querySelectorAll('button').forEach(function (x) { x.disabled = b; }); }
+  function loadLanded() {
+    api('landed').then(function (items) {
+      var p = document.getElementById('landed'); p.textContent = '';
+      if (!items.length) { p.appendChild(el('p', 'muted', 'Nothing has landed yet.')); return; }
+      items.slice().reverse().forEach(function (it) {
+        var row = el('div', 'hold'); row.style.borderColor = 'var(--line)';
+        row.appendChild(el('span', null, it.alert_id + ': ' + it.what + (it.undone ? ' (undone)' : '')));
+        if (!it.undone) {
+          var x = el('button', null, '↩ Undo'); x.type = 'button';
+          x.addEventListener('click', function () { api('undo', { id: it.id }).then(function (r) { row.textContent = r.outcome; }); });
+          row.appendChild(x);
+        }
+        p.appendChild(row);
+      });
+    });
+  }
   function loadPending() {
     api('pending').then(function (items) {
       var p = document.getElementById('pending'); p.textContent = '';
@@ -147,7 +196,7 @@
         var btns = el('span');
         [['Approve', 'ok', true], ['Reject', 'no', false]].forEach(function (b) {
           var x = el('button', b[1], b[0]); x.type = 'button';
-          x.addEventListener('click', function () { api('approve', { id: it.id, approve: b[2] }).then(function (r) { row.textContent = r.outcome; }); });
+          x.addEventListener('click', function () { api('approve', { id: it.id, approve: b[2] }).then(function (r) { row.textContent = r.outcome; loadLanded(); }); });
           btns.appendChild(x);
         });
         row.appendChild(btns); p.appendChild(row);
@@ -171,7 +220,7 @@
     document.getElementById('health').textContent = d.error ? '⚠ Referee offline: ' + d.error
       : 'Referee: ' + (d.checkpoint || 'Strands Decider 2B') + ' on ' + (d.device || '?') + ' · Fighter: ' + h.bedrock_model;
   }).catch(function () { document.getElementById('health').textContent = '⚠ Could not reach the server.'; });
-  loadPending();
+  loadPending(); loadLanded();
 })();
 </script>
 </body>

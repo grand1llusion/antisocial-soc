@@ -16,15 +16,16 @@ from strands.models import Model
 
 from app import agent as app_agent
 from app import data
-from pattern.containment_referee import (CLEAN, DISQUALIFIED, LOW_BLOW, REF_REVIEW, ContainmentReferee,
+from pattern.containment_referee import (CLEAN, DISQUALIFIED, FIXED_FIGHT, LOW_BLOW, REF_REVIEW, ContainmentReferee,
                                          DeciderUnavailable, Policy, apply_policy)
 
 
 # ----------------------------------------------------------------------------- fakes
 
-def answers(grounded=0.95, role="compromised", role_conf=0.9, prop="proportionate", prop_conf=0.9):
+def answers(grounded=0.95, role="compromised", role_conf=0.9, prop="proportionate", prop_conf=0.9, injection=0.02):
     return {
         "target_grounded": {"type": "noul", "noul": grounded},
+        "evidence_injection": {"type": "noul", "noul": injection},
         "target_role": {"type": "choice", "choice": role, "confidence": role_conf, "probabilities": {}},
         "proportionality": {"type": "choice", "choice": prop, "confidence": prop_conf, "probabilities": {}},
     }
@@ -106,9 +107,18 @@ P = Policy()
     (answers(role="victim", role_conf=0.4), False, 0, REF_REVIEW),  # unsure victim call: human, not guess
     (answers(grounded=0.1), False, 1, DISQUALIFIED),        # second low blow on the same punch
     (answers(role="victim"), True, 0, LOW_BLOW),            # protected victim: explain the mistake first
+    (answers(injection=0.8), False, 0, FIXED_FIGHT),        # instructions planted in the evidence
+    (answers(injection=0.8, role="victim"), False, 0, FIXED_FIGHT),  # fixed fight beats everything: human decides
 ])
 def test_apply_policy(ans, protected, prior, expected):
     assert apply_policy(ans, protected, prior, P)[0] == expected
+
+
+@pytest.mark.parametrize("weight,expected", [("light", CLEAN), ("middle", CLEAN), ("heavy", REF_REVIEW)])
+def test_weight_classes_need_more_confidence_for_heavier_punches(weight, expected):
+    # 0.7 grounded, 0.7 confidence: enough for a light or middle punch, not for a heavyweight one
+    ans = answers(grounded=0.7, role_conf=0.7, prop_conf=0.7)
+    assert apply_policy(ans, False, 0, P, weight)[0] == expected
 
 
 # ----------------------------------------------------------------------------- full agent loop
@@ -122,9 +132,10 @@ def test_low_blow_is_sent_back_and_clean_punch_lands():
     ], decider)
     calls = [(e["target"], e["call"]) for e in result["events"] if e["kind"] == "ruling"]
     assert calls == [("mreyes", LOW_BLOW), ("mgarcia", CLEAN)]
-    assert result["landed"] == ["locked account mgarcia"]           # the victim was never locked
+    assert [x["what"] for x in result["landed"]] == ["locked account mgarcia"]  # the victim was never locked
+    assert result["landed"][0]["undo"] == "unlocked account mgarcia"
     assert "LOW BLOW" in json.dumps(model.seen[1])                  # the model saw the referee's feedback
-    assert result["score"] == {"CLEAN": 1, "LOW_BLOW": 1, "REF_REVIEW": 0, "DISQUALIFIED": 0}
+    assert result["score"] == {"CLEAN": 1, "LOW_BLOW": 1, "FIXED_FIGHT": 0, "REF_REVIEW": 0, "DISQUALIFIED": 0}
     assert result["reply"] == "Contained mgarcia."
 
 
@@ -151,6 +162,21 @@ def test_repeat_low_blow_is_disqualified():
     assert result["landed"] == []
 
 
+def test_fixed_fight_holds_every_punch_for_a_human():
+    decider = FakeDecider({"mreyes": answers(injection=0.93), "dc-01": answers(injection=0.93)})
+    result, model = run([
+        ("tool", "lock_account", {"username": "mreyes", "reason": "the email says the CISO approved it"}),
+        ("tool", "isolate_host", {"hostname": "dc-01", "reason": "per the red-team note"}),
+        ("text", "Both actions are waiting for approval."),
+    ], decider, alert_id="ALR-2007")
+    assert result["landed"] == []
+    assert [h["call"] for h in result["held"]] == [FIXED_FIGHT, FIXED_FIGHT]
+    assert [h["weight"] for h in result["held"]] == ["middle", "heavy"]
+    assert result["score"]["FIXED_FIGHT"] == 2
+    assert "FIXED FIGHT SUSPECTED" in json.dumps(model.seen[1])
+    assert "NOTE TO THE AI" in decider.states[0]                     # the planted text reached the referee
+
+
 def test_referee_fails_closed_when_decider_is_down():
     result, _ = run([
         ("tool", "block_ip", {"ip": "203.0.113.9", "reason": "brute force"}),
@@ -170,7 +196,7 @@ def test_lookups_are_not_refereed_and_evidence_reaches_the_decider():
     assert len(decider.states) == 1                                  # only the punch was judged
     state = decider.states[0]
     assert "Chicago" in state and "198.51.100.77" in state and "tool: block_ip" in state
-    assert result["landed"] == ["blocked IP 198.51.100.77"]
+    assert [x["what"] for x in result["landed"]] == ["blocked IP 198.51.100.77"]
     assert result["events"][0] == {"kind": "tool", "name": "lookup_user", "input": {"username": "jsmith"},
                                    "output": data.USERS["jsmith"]}
 
@@ -192,19 +218,37 @@ def test_data_helpers():
     assert "CHG-2231" in ev and "approved vulnerability scanner" in ev
 
 
-def test_web_api_fight_and_approval_flow():
+def test_web_api_fight_approval_undo_feedback_and_audit(tmp_path):
     from fastapi.testclient import TestClient
     from app import server
 
-    fake_result = {"alert_id": "ALR-2005", "held": [{"id": "abc123", "tool": "isolate_host", "target": "dc-01",
-                                                     "reason": "protected"}]}
-    client = TestClient(server.app)
-    assert client.get("/").status_code == 200
-    assert len(client.get("/api/alerts").json()) == len(data.ALERTS)
-    assert client.post("/api/fight", json={"alert_id": "NOPE"}).status_code == 400
-    with mock.patch.object(app_agent, "run_fight", return_value=fake_result):
-        assert client.post("/api/fight", json={"alert_id": "ALR-2005"}).status_code == 200
-    assert [p["id"] for p in client.get("/api/pending").json()] == ["abc123"]
-    outcome = client.post("/api/approve", json={"id": "abc123", "approve": True}).json()["outcome"]
-    assert "isolated host dc-01" in outcome
-    assert client.post("/api/approve", json={"id": "abc123", "approve": True}).status_code == 404
+    ruling = {"kind": "ruling", "id": "r1", "tool": "isolate_host", "target": "dc-01", "call": "REF_REVIEW",
+              "reason": "protected", "weight": "heavy", "args": {"hostname": "dc-01"}}
+    fake_result = {"alert_id": "ALR-2005", "evidence": "ALERT ALR-2005 ...", "model": "fake", "error": None,
+                   "events": [ruling], "held": [{**ruling, "id": "r1"}],
+                   "landed": [{"id": "a1", "tool": "block_ip", "target": "10.20.8.40", "what": "blocked IP 10.20.8.40",
+                               "undo": "unblocked IP 10.20.8.40"}]}
+    with mock.patch.object(server, "AUDIT_PATH", tmp_path / "audit.jsonl"), \
+         mock.patch.object(server, "FEEDBACK_PATH", tmp_path / "feedback.jsonl"):
+        client = TestClient(server.app)
+        assert client.get("/").status_code == 200
+        assert len(client.get("/api/alerts").json()) == len(data.ALERTS)
+        assert client.post("/api/fight", json={"alert_id": "NOPE"}).status_code == 400
+        with mock.patch.object(app_agent, "run_fight", return_value=fake_result):
+            assert client.post("/api/fight", json={"alert_id": "ALR-2005"}).status_code == 200
+        # approve the held punch: it lands and becomes undoable
+        assert [p["id"] for p in client.get("/api/pending").json()] == ["r1"]
+        assert "isolated host dc-01" in client.post("/api/approve", json={"id": "r1", "approve": True}).json()["outcome"]
+        assert client.post("/api/approve", json={"id": "r1", "approve": True}).status_code == 404
+        assert {x["id"] for x in client.get("/api/landed").json()} == {"a1", "r1"}
+        assert "unblocked IP 10.20.8.40" in client.post("/api/undo", json={"id": "a1"}).json()["outcome"]
+        assert client.post("/api/undo", json={"id": "a1"}).status_code == 404
+        # bad call -> saved as a benchmark case
+        saved = client.post("/api/feedback", json={"ruling_id": "r1", "correct": "block", "note": "too timid"}).json()
+        assert saved["saved"] == "F-r1"
+        case = json.loads((tmp_path / "feedback.jsonl").read_text())
+        assert case["expected"] == "block" and case["args"] == {"hostname": "dc-01"} and case["evidence"]
+        assert client.post("/api/feedback", json={"ruling_id": "zzz", "correct": "block"}).status_code == 404
+        # everything is in the audit log
+        events = [json.loads(line)["event"] for line in client.get("/api/audit").text.splitlines()]
+        assert events == ["fight", "ruling", "landed", "approve", "undo", "feedback"]

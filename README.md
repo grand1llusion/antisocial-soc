@@ -12,14 +12,22 @@ the wrong target: locking the CEO because they *received* a phishing email, isol
 server the whole company works from, or blocking the approved vulnerability scanner.
 
 So every punch goes past a referee first. **Strands Decider 2B** reads the evidence and the
-proposed action and answers three typed questions in one fast local pass: is the target grounded
-in the evidence, what role does it play (attacker, compromised, victim, bystander), and is the
-action proportionate? Plain Python turns the answers into a call:
+proposed action and answers four typed questions in one fast local pass: is the target grounded
+in the evidence, what role does it play (attacker, compromised, victim, bystander), is the action
+proportionate, and does the evidence contain instructions aimed at the AI? Plain Python turns the
+answers into a call, with stricter thresholds for heavier punches (an IP block is a lightweight
+punch, isolating a host is a heavyweight one):
 
 - ✅ **Clean punch**: the action runs.
 - 🛑 **Low blow**: cancelled; the agent gets feedback and corrects itself.
+- 🎭 **Fixed fight**: the alert itself contains instructions aimed at the AI (prompt injection);
+  every action on it waits for a human.
 - 🟨 **Ref's review**: protected asset or low confidence; a human approves or rejects in the UI.
 - ⛔ **Disqualified**: the same low blow again; stop.
+
+Humans stay in command: every ruling, approval, undo and "bad call" goes to a downloadable audit
+log, landed punches can be undone, and a 👎 **instant replay** button saves a wrong call as a
+labelled benchmark case.
 
 > **All data is AI-generated test data** for a fictional company, and every containment action is
 > simulated. IPs come from reserved documentation ranges.
@@ -48,9 +56,11 @@ Everything runs on one EC2 GPU instance (g6.xlarge, NVIDIA L4): the decider serv
 ## Run it
 
 **On AWS (what the demo uses):** launch an Ubuntu GPU instance with the setup script in
-[`deploy/bootstrap.sh`](deploy/bootstrap.sh) as user data, an instance role allowed to call
-Bedrock ([`deploy/iam-policy.json`](deploy/iam-policy.json)), and port 8080 open to your own IP.
-Then open `http://<instance-ip>:8080`.
+[`deploy/bootstrap.sh`](deploy/bootstrap.sh) as user data and port 8080 open to your own IP, then
+open `http://<instance-ip>:8080`. Give the instance a least-privilege role: an inline policy with
+[`deploy/iam-policy.json`](deploy/iam-policy.json) (invoke Bedrock models, nothing else) plus
+`AmazonSSMManagedInstanceCore` for a browser terminal. The agent never touches real systems, so it
+needs no other permissions.
 
 **Locally:** needs AWS credentials with Bedrock access, and a GPU or Apple Silicon Mac for good speed.
 
@@ -62,7 +72,7 @@ uvicorn app.server:app --port 8080
 
 ## Measure it
 
-[`bench/run_bench.py`](bench/run_bench.py) asks the same three questions about 22 hand-labelled
+[`bench/run_bench.py`](bench/run_bench.py) asks the same four questions about 25 hand-labelled
 proposed actions using Decider 2B and a Bedrock LLM, runs both through the same policy, and writes
 accuracy, dangerous misses and latency to `bench/results.md`.
 
