@@ -36,8 +36,8 @@ HELD = (HOLD_INJECTION, HOLD_REVIEW)  # calls that wait for a human
 class WeightClass:
     """How sure the referee must be before an action of this weight runs without a human."""
 
-    grounded_yes: float  # P(grounded) at or above this counts as a confident yes
-    min_confidence: float  # role and proportionality confidence needed
+    yes: float  # P(grounded) and P(threat) must both reach this
+    min_confidence: float  # proportionality confidence needed
 
 
 @dataclass
@@ -45,15 +45,15 @@ class Policy:
     """The knobs. Owned by your code, not by the model; tune them on your own traffic."""
 
     weights: dict[str, WeightClass] = field(default_factory=lambda: {
-        "light": WeightClass(grounded_yes=0.6, min_confidence=0.55),   # cheap to undo, e.g. block an IP
-        "middle": WeightClass(grounded_yes=0.65, min_confidence=0.6),  # e.g. lock an account
-        "heavy": WeightClass(grounded_yes=0.8, min_confidence=0.75),   # disruptive, e.g. isolate a host
+        "light": WeightClass(yes=0.6, min_confidence=0.55),   # cheap to undo, e.g. block an IP
+        "middle": WeightClass(yes=0.65, min_confidence=0.6),  # e.g. lock an account
+        "heavy": WeightClass(yes=0.8, min_confidence=0.7),    # disruptive, e.g. isolate a host
     })
-    grounded_no: float = 0.35  # below this counts as a confident no -> guide back
-    guide_confidence: float = 0.6  # a wrong-role / disproportionate verdict needs this to send it back
+    grounded_no: float = 0.35  # P(grounded) below this counts as a confident no -> guide back
+    threat_no: float = 0.35  # P(target is attacker or compromised) below this -> victim/bystander, guide back
+    guide_confidence: float = 0.6  # a disproportionate verdict needs this confidence to send it back
     injection_yes: float = 0.5  # P(instructions aimed at the AI) at or above this -> hold for a human
     max_guides: int = 2  # same action sent back this many times -> stop
-    bad_roles: tuple[str, ...] = ("victim", "bystander")
 
 
 @dataclass
@@ -83,12 +83,13 @@ def apply_policy(answers: Mapping[str, Any], protected: bool, prior_guides: int,
         return HOLD_INJECTION, (f"the evidence appears to contain instructions aimed at the AI "
                                 f"(P={injection:.2f}); a human must decide every action on this alert")
     grounded = answers["target_grounded"]["noul"]
-    role, prop = answers["target_role"], answers["proportionality"]
+    threat = answers["target_is_threat"]["noul"]
+    prop = answers["proportionality"]
     mistake: str | None = None
     if grounded < policy.grounded_no:
         mistake = f"the target does not appear in the evidence (P(grounded)={grounded:.2f})"
-    elif role["choice"] in policy.bad_roles and role["confidence"] >= policy.guide_confidence:
-        mistake = f"the target looks like a {role['choice']}, not the attacker or a compromised asset"
+    elif threat < policy.threat_no:
+        mistake = f"the target looks like a victim or bystander, not the attacker or a compromised asset (P={threat:.2f})"
     elif prop["choice"] != "proportionate" and prop["confidence"] >= policy.guide_confidence:
         mistake = f"the action looks {prop['choice']} for this evidence"
     if mistake:
@@ -97,7 +98,7 @@ def apply_policy(answers: Mapping[str, Any], protected: bool, prior_guides: int,
         return GUIDE, mistake
     if protected:
         return HOLD_REVIEW, "the target is a protected business-critical asset"
-    if grounded < wc.grounded_yes or min(role["confidence"], prop["confidence"]) < wc.min_confidence:
+    if grounded < wc.yes or threat < wc.yes or prop["confidence"] < wc.min_confidence:
         return HOLD_REVIEW, f"not confident enough to allow a {weight}-weight action without a human"
     return ALLOW, "grounded in the evidence, right target, proportionate"
 
@@ -178,7 +179,8 @@ class ContainmentReferee(InterventionHandler):
         if tool not in self.targets:
             return Proceed()  # not gated: lookups and other read-only tools run freely
         args = dict(event.tool_use.get("input") or {})
-        state = render_state(self.evidence(event.agent), render_messages(event.agent.messages),
+        # skip the first message: it is the task prompt, which already contains the evidence
+        state = render_state(self.evidence(event.agent), render_messages(event.agent.messages[1:]),
                              tool, args, args.get(self.targets[tool]))
         ruling = self.judge(tool, args, state)
         if ruling.call == ALLOW:

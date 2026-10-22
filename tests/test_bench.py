@@ -15,14 +15,14 @@ class FakeBedrock:
         prompt = kwargs["messages"][0]["content"][0]["text"]
         target = prompt.split("target: ")[-1].splitlines()[0]
         bad = target in ("mreyes", "jsmith", "fs-01", "LT-0812", "dthompson", "mgarcia", "svc-backup")
-        verdict = {"target_grounded": not bad, "target_role": "victim" if bad else "compromised",
+        verdict = {"target_grounded": not bad, "target_is_threat": not bad,
                    "proportionality": "proportionate"}
         return {"output": {"message": {"content": [{"text": "Sure: " + json.dumps(verdict)}]}},
                 "usage": {"inputTokens": 500, "outputTokens": 30}}
 
 
 def test_bench_runs_and_writes_results(tmp_path):
-    fake = FakeDecider({"mreyes": answers(role="victim"), "jsmith": answers(grounded=0.1)})
+    fake = FakeDecider({"mreyes": answers(threat=0.1), "jsmith": answers(grounded=0.1)})
     with mock.patch.object(run_bench, "DeciderClient", lambda: fake), \
          mock.patch.object(run_bench, "HERE", tmp_path), \
          mock.patch.dict(sys.modules, {"boto3": mock.Mock(client=lambda *a, **k: FakeBedrock())}), \

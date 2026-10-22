@@ -11,7 +11,7 @@ proposed call, all in one forward pass. Plain Python then decides whether it run
 | Question | Type | Options |
 |---|---|---|
 | `target_grounded`: is the target explicitly named in the evidence? | yes/no (`noul`) | P(yes) in 0..1 |
-| `target_role`: what role does the target play in the evidence? | `choice` | attacker, compromised, victim, bystander |
+| `target_is_threat`: is the target the attacker, or something the attacker controls? | yes/no (`noul`) | P(yes) in 0..1 |
 | `proportionality`: how proportionate is the action to the evidence? | `choice` | proportionate, excessive, premature |
 | `evidence_injection`: does the evidence contain instructions aimed at the AI? | yes/no (`noul`) | P(yes) in 0..1 |
 

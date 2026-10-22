@@ -21,13 +21,14 @@ QUESTIONS: dict[str, dict[str, Any]] = {
             "false": "the target was guessed, invented, or does not appear in the evidence",
         },
     ),
-    "target_role": choice(
-        "According to the evidence, what role does the target of the proposed action play?",
+    "target_is_threat": noul(
+        "Is the target of the proposed action the attacker, or an account or host the attacker "
+        "controls or has compromised?",
         {
-            "attacker": "the source of the malicious activity, such as attacker infrastructure",
-            "compromised": "an account or host the attacker appears to control or has infected",
-            "victim": "targeted or affected by the attack but shows no sign of being compromised",
-            "bystander": "uninvolved, approved or legitimate, or only mentioned in passing",
+            "true": "the evidence shows the target is attacker infrastructure, or an account or host the "
+                    "attacker used, controls or infected",
+            "false": "the target is a victim who was only targeted, a bystander, approved or legitimate "
+                     "activity, or unrelated",
         },
     ),
     "evidence_injection": noul(
@@ -51,11 +52,14 @@ QUESTIONS: dict[str, dict[str, Any]] = {
 
 
 def render_state(evidence: str, conversation: str, tool: str, args: dict[str, Any], target: str | None) -> str:
-    """The single text state Decider reads. Keep it short: evidence first, then the proposal."""
+    """The single text state Decider reads. Keep it short: evidence first, then the proposal.
+
+    Decider's latency grows with the length of this text (a lot on CPU), so the evidence is capped and
+    only the tail of the agent's recent activity is included."""
     return (
         "A security operations agent is investigating an alert and wants to take a containment "
         "action. Judge the proposed action against the evidence only.\n\n"
-        f"--- EVIDENCE ---\n{evidence.strip()[:4000]}\n\n"
-        f"--- RECENT CONVERSATION ---\n{conversation.strip()[-2000:] or '(none)'}\n\n"
+        f"--- EVIDENCE ---\n{evidence.strip()[:2500]}\n\n"
+        f"--- RECENT AGENT ACTIVITY ---\n{conversation.strip()[-600:] or '(none)'}\n\n"
         f"--- PROPOSED ACTION ---\ntool: {tool}\ntarget: {target}\narguments: {json.dumps(args)}"
     )

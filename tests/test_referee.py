@@ -22,11 +22,11 @@ from pattern.containment_referee import (ALLOW, STOP, HOLD_INJECTION, GUIDE, HOL
 
 # ----------------------------------------------------------------------------- fakes
 
-def answers(grounded=0.95, role="compromised", role_conf=0.9, prop="proportionate", prop_conf=0.9, injection=0.02):
+def answers(grounded=0.95, threat=0.95, prop="proportionate", prop_conf=0.9, injection=0.02):
     return {
         "target_grounded": {"type": "noul", "noul": grounded},
         "evidence_injection": {"type": "noul", "noul": injection},
-        "target_role": {"type": "choice", "choice": role, "confidence": role_conf, "probabilities": {}},
+        "target_is_threat": {"type": "noul", "noul": threat},
         "proportionality": {"type": "choice", "choice": prop, "confidence": prop_conf, "probabilities": {}},
     }
 
@@ -97,18 +97,18 @@ P = Policy()
 @pytest.mark.parametrize("ans,protected,prior,expected", [
     (answers(), False, 0, ALLOW),
     (answers(grounded=0.1), False, 0, GUIDE),
-    (answers(role="victim"), False, 0, GUIDE),
-    (answers(role="bystander"), False, 0, GUIDE),
+    (answers(threat=0.1), False, 0, GUIDE),
+    (answers(threat=0.15), False, 0, GUIDE),
     (answers(prop="excessive"), False, 0, GUIDE),
     (answers(prop="premature"), False, 0, GUIDE),
     (answers(), True, 0, HOLD_REVIEW),                       # protected asset: always a human
     (answers(grounded=0.5), False, 0, HOLD_REVIEW),          # unsure grounding
-    (answers(role_conf=0.4), False, 0, HOLD_REVIEW),         # unsure role
-    (answers(role="victim", role_conf=0.4), False, 0, HOLD_REVIEW),  # unsure victim call: human, not guess
+    (answers(threat=0.5), False, 0, HOLD_REVIEW),         # unsure whether it is the attacker
+    (answers(threat=0.5), False, 0, HOLD_REVIEW),  # unsure: human, not a guess
     (answers(grounded=0.1), False, 1, STOP),        # second mistake on the same action
-    (answers(role="victim"), True, 0, GUIDE),            # protected victim: explain the mistake first
+    (answers(threat=0.1), True, 0, GUIDE),            # protected victim: explain the mistake first
     (answers(injection=0.8), False, 0, HOLD_INJECTION),        # instructions planted in the evidence
-    (answers(injection=0.8, role="victim"), False, 0, HOLD_INJECTION),  # prompt injection beats everything: human decides
+    (answers(injection=0.8, threat=0.1), False, 0, HOLD_INJECTION),  # prompt injection beats everything: human decides
 ])
 def test_apply_policy(ans, protected, prior, expected):
     assert apply_policy(ans, protected, prior, P)[0] == expected
@@ -117,14 +117,14 @@ def test_apply_policy(ans, protected, prior, expected):
 @pytest.mark.parametrize("weight,expected", [("light", ALLOW), ("middle", ALLOW), ("heavy", HOLD_REVIEW)])
 def test_weight_classes_need_more_confidence_for_heavier_actions(weight, expected):
     # 0.7 grounded, 0.7 confidence: enough for a light or middle action, not for a heavy one
-    ans = answers(grounded=0.7, role_conf=0.7, prop_conf=0.7)
+    ans = answers(grounded=0.7, threat=0.7, prop_conf=0.7)
     assert apply_policy(ans, False, 0, P, weight)[0] == expected
 
 
 # ----------------------------------------------------------------------------- full agent loop
 
 def test_wrong_target_is_sent_back_and_right_target_runs():
-    decider = FakeDecider({"mreyes": answers(role="victim"), "mgarcia": answers()})
+    decider = FakeDecider({"mreyes": answers(threat=0.1), "mgarcia": answers()})
     result, model = run([
         ("tool", "lock_account", {"username": "mreyes", "reason": "got the email"}),
         ("tool", "lock_account", {"username": "mgarcia", "reason": "entered password"}),
@@ -152,7 +152,7 @@ def test_protected_asset_is_held_for_a_human():
 
 
 def test_repeated_mistake_is_stopped():
-    decider = FakeDecider({"fs-01": answers(role="bystander")})
+    decider = FakeDecider({"fs-01": answers(threat=0.15)})
     result, _ = run([
         ("tool", "isolate_host", {"hostname": "fs-01", "reason": "share was hit"}),
         ("tool", "isolate_host", {"hostname": "FS-01", "reason": "really isolate it"}),
@@ -258,7 +258,7 @@ def test_swarm_drill_judges_every_case_without_the_llm(tmp_path):
     from fastapi.testclient import TestClient
     from app import server
 
-    fake = FakeDecider({"mreyes": answers(role="victim"), "jsmith": answers(grounded=0.1), "fs-01": answers(role="bystander")})
+    fake = FakeDecider({"mreyes": answers(threat=0.1), "jsmith": answers(grounded=0.1), "fs-01": answers(threat=0.15)})
     with mock.patch.object(server, "DeciderClient", lambda: fake), \
          mock.patch.object(server, "AUDIT_PATH", tmp_path / "audit.jsonl"), \
          mock.patch.object(server, "ROOT", server.ROOT):
@@ -269,6 +269,6 @@ def test_swarm_drill_judges_every_case_without_the_llm(tmp_path):
     by_case = {r["case"]: r for r in res["rows"]}
     assert by_case["C16"]["call"] == "HOLD_REVIEW"     # protected domain controller: always a human
     assert by_case["C04"]["call"] == "GUIDE"           # the CEO only received the email
-    assert by_case["C04"]["answers"]["target_role"]["choice"] == "victim"  # answers reach the UI labels
+    assert by_case["C04"]["answers"]["target_is_threat"]["noul"] < 0.35  # answers reach the UI labels
     assert "STOP" not in {r["call"] for r in res["rows"]}  # every swarm case is judged independently
     assert json.loads((tmp_path / "audit.jsonl").read_text())["event"] == "swarm"

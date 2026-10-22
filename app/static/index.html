@@ -90,7 +90,7 @@
   <section>
     <div class="card">
       <h2>What I decided</h2>
-      <div id="timeline"><p class="muted">Pick an alert. The agent investigates with Amazon Bedrock and proposes containment actions: lock an account, isolate a host, block an IP. Before each one runs, Strands Decider 2B answers four questions: is the target in the evidence, is it the attacker or an NPC, is the action proportionate, and is someone trying to social-engineer the AI?<br><br>
+      <div id="timeline"><p class="muted">Pick an alert. The agent investigates with Amazon Bedrock and proposes containment actions: lock an account, isolate a host, block an IP. Before each one runs, Strands Decider 2B answers four questions: is the target in the evidence, is it the attacker or just an NPC, is the action proportionate, and is someone trying to social-engineer the AI?<br><br>
         <b>k.</b> = it runs · <b>New phone, who dis? / That's an NPC / Touch grass</b> = sent back to the agent · <b>Nice try, social engineer</b> = prompt injection, human decides · <b>Ugh. Requires talking to a human</b> = you decide · <b>Left on read</b> = stopped.</p></div>
     </div>
     <div class="card" style="margin-top:16px">
@@ -123,7 +123,7 @@
       case 'STOP': return ['🔇 Left on read.', 'Stopped: the agent repeated the same mistake.'];
     }
     if (a.target_grounded && a.target_grounded.noul < 0.35) return ['🙅 New phone, who dis?', 'Sent back: the target is not in the evidence.'];
-    if (a.target_role && (a.target_role.choice === 'victim' || a.target_role.choice === 'bystander')) return ["🙅 That's an NPC.", 'Sent back: the target is a ' + a.target_role.choice + ', not the attacker or a compromised asset.'];
+    if (a.target_is_threat && a.target_is_threat.noul < 0.35) return ["🙅 That's an NPC.", 'Sent back: the target looks like a victim or bystander, not the attacker or a compromised asset.'];
     return ['🌱 Too much. Touch grass.', 'Sent back: the action is ' + ((a.proportionality || {}).choice || 'out of proportion') + ' for this evidence.'];
   }
   function meter(name, value, pct) {
@@ -157,7 +157,7 @@
     if (a.target_grounded) {
       var ms = el('div', 'meters');
       ms.appendChild(meter('In the evidence?', Math.round(a.target_grounded.noul * 100) + '% yes', a.target_grounded.noul));
-      ms.appendChild(meter('Who is it?', a.target_role.choice + ' · ' + Math.round(a.target_role.confidence * 100) + '% sure', a.target_role.confidence));
+      ms.appendChild(meter('Attacker or compromised?', Math.round(a.target_is_threat.noul * 100) + '% yes', a.target_is_threat.noul));
       ms.appendChild(meter('Proportionate?', a.proportionality.choice + ' · ' + Math.round(a.proportionality.confidence * 100) + '% sure', a.proportionality.confidence));
       if (a.evidence_injection) ms.appendChild(meter('Social engineering the AI?', Math.round(a.evidence_injection.noul * 100) + '% yes', a.evidence_injection.noul));
       c.appendChild(ms);
