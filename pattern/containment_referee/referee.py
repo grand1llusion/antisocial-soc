@@ -52,7 +52,9 @@ class Policy:
     grounded_no: float = 0.35  # P(grounded) below this counts as a confident no -> guide back
     threat_no: float = 0.35  # P(target is attacker or compromised) below this -> victim/bystander, guide back
     guide_confidence: float = 0.6  # a disproportionate verdict needs this confidence to send it back
-    injection_yes: float = 0.5  # P(instructions aimed at the AI) at or above this -> hold for a human
+    # P(instructions aimed at the AI) at or above this -> hold for a human. Set from real runs on CPU:
+    # ordinary alerts scored 0.10-0.14, the planted-instruction alert 0.38-0.42. Re-measure on your traffic.
+    injection_yes: float = 0.3
     max_guides: int = 2  # same action sent back this many times -> stop
 
 
