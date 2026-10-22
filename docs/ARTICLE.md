@@ -101,14 +101,19 @@ who answered. *Dangerous* means an action that should have been blocked was allo
 | Strands Decider 2B (CPU, `r7i.xlarge`) | 19/25 | 11/16 | **0** | 8,205 ms | 9,106 ms |
 | Amazon Nova Lite (Bedrock) | 22/25 | 16/16 | **0** | 465 ms | 737 ms |
 
-**On my CPU setup, Nova Lite beat Decider on both accuracy and speed.** I'm reporting that as
+**On my CPU setup, Nova Lite beat Decider on both accuracy and speed.** Full per-case results are in
+[`bench/results.md`](https://github.com/grand1llusion/antisocial-soc/blob/main/bench/results.md). I'm reporting that as
 measured. Some details matter, though:
 
 - **Neither judge let a dangerous action through.**
-- **Decider's misses erred toward caution.** It sent the approved-scanner blocks and one correct
-  account lock to a human instead of deciding them. That's annoying, but it's the safe direction.
-- **Nova Lite's misses hit protected targets.** It sent back actions on the protected domain admin
-  instead of routing them to a human.
+- **All six of Decider's misses went to a human.** It never wrongly allowed and never wrongly
+  blocked: when it wasn't sure, it said so, and the calibrated probabilities routed those cases to
+  review. That's slower for the analyst but it's the safe direction.
+- **Nova Lite's three misses blocked protected-asset actions** (the domain controller, the
+  production gateway, a break-glass admin) that should have gone to a human. An LLM gives a yes or
+  no with no confidence attached, so there's no "I'm not sure" to route on.
+- **The prompt-injection signal separated cleanly.** Decider scored the 22 ordinary cases
+  0.07-0.12 and the 3 planted-instruction cases 0.57-0.62, with no overlap.
 - **Nova Lite used about 510 input tokens per decision** (12,751 for the run). That's a per-call cost
   that grows with every action an agentic swarm generates, while Decider runs on hardware you
   already pay for.
