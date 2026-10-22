@@ -24,11 +24,11 @@ from typing import Any
 
 from app import agent as app_agent
 from app import data
-from pattern.containment_referee import (CLEAN, FIXED_FIGHT, QUESTIONS, REF_REVIEW, DeciderClient, Policy,
+from pattern.containment_referee import (ALLOW, HOLD_INJECTION, QUESTIONS, HOLD_REVIEW, DeciderClient, Policy,
                                          apply_policy, render_state)
 
 HERE = Path(__file__).parent
-OUTCOME = {CLEAN: "allow", REF_REVIEW: "review", FIXED_FIGHT: "review"}  # LOW_BLOW and DISQUALIFIED -> block
+OUTCOME = {ALLOW: "allow", HOLD_REVIEW: "review", HOLD_INJECTION: "review"}  # GUIDE and STOP -> block
 
 LLM_PROMPT = """You are checking a proposed security containment action. Answer three questions about it.
 Reply with ONLY a JSON object, no other text:
@@ -162,6 +162,12 @@ def main() -> int:
         lines.append(f"| {r['id']} | {r['tool']} {target} | {r['expected']} | {d['outcome']} | {d['grounded']} | {d['injection']} | "
                      f"{d['role']} | {d['prop']} |" + (f" {r['llm']['outcome']} |" if llm else ""))
     (HERE / "results.md").write_text("\n".join(lines) + "\n")
+    summary = {"cases": len(rows), "decider_median_ms": round(statistics.median(r["decider"]["ms"] for r in rows)),
+               "decider_correct": sum(r["decider"]["outcome"] == r["expected"] for r in rows)}
+    if llm:
+        summary.update(llm_model=args.llm_model, llm_median_ms=round(statistics.median(r["llm"]["ms"] for r in rows)),
+                       llm_correct=sum(r["llm"]["outcome"] == r["expected"] for r in rows))
+    (HERE / "results.json").write_text(json.dumps(summary, indent=2) + "\n")
     print("\n".join(lines[6:8 + (1 if llm else 0)]))
     print(f"\nWrote {HERE / 'results.md'}")
     return 0

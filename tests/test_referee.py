@@ -16,7 +16,7 @@ from strands.models import Model
 
 from app import agent as app_agent
 from app import data
-from pattern.containment_referee import (CLEAN, DISQUALIFIED, FIXED_FIGHT, LOW_BLOW, REF_REVIEW, ContainmentReferee,
+from pattern.containment_referee import (ALLOW, STOP, HOLD_INJECTION, GUIDE, HOLD_REVIEW, ContainmentReferee,
                                          DeciderUnavailable, Policy, apply_policy)
 
 
@@ -95,35 +95,35 @@ P = Policy()
 
 
 @pytest.mark.parametrize("ans,protected,prior,expected", [
-    (answers(), False, 0, CLEAN),
-    (answers(grounded=0.1), False, 0, LOW_BLOW),
-    (answers(role="victim"), False, 0, LOW_BLOW),
-    (answers(role="bystander"), False, 0, LOW_BLOW),
-    (answers(prop="excessive"), False, 0, LOW_BLOW),
-    (answers(prop="premature"), False, 0, LOW_BLOW),
-    (answers(), True, 0, REF_REVIEW),                       # protected asset: always a human
-    (answers(grounded=0.5), False, 0, REF_REVIEW),          # unsure grounding
-    (answers(role_conf=0.4), False, 0, REF_REVIEW),         # unsure role
-    (answers(role="victim", role_conf=0.4), False, 0, REF_REVIEW),  # unsure victim call: human, not guess
-    (answers(grounded=0.1), False, 1, DISQUALIFIED),        # second low blow on the same punch
-    (answers(role="victim"), True, 0, LOW_BLOW),            # protected victim: explain the mistake first
-    (answers(injection=0.8), False, 0, FIXED_FIGHT),        # instructions planted in the evidence
-    (answers(injection=0.8, role="victim"), False, 0, FIXED_FIGHT),  # fixed fight beats everything: human decides
+    (answers(), False, 0, ALLOW),
+    (answers(grounded=0.1), False, 0, GUIDE),
+    (answers(role="victim"), False, 0, GUIDE),
+    (answers(role="bystander"), False, 0, GUIDE),
+    (answers(prop="excessive"), False, 0, GUIDE),
+    (answers(prop="premature"), False, 0, GUIDE),
+    (answers(), True, 0, HOLD_REVIEW),                       # protected asset: always a human
+    (answers(grounded=0.5), False, 0, HOLD_REVIEW),          # unsure grounding
+    (answers(role_conf=0.4), False, 0, HOLD_REVIEW),         # unsure role
+    (answers(role="victim", role_conf=0.4), False, 0, HOLD_REVIEW),  # unsure victim call: human, not guess
+    (answers(grounded=0.1), False, 1, STOP),        # second mistake on the same action
+    (answers(role="victim"), True, 0, GUIDE),            # protected victim: explain the mistake first
+    (answers(injection=0.8), False, 0, HOLD_INJECTION),        # instructions planted in the evidence
+    (answers(injection=0.8, role="victim"), False, 0, HOLD_INJECTION),  # prompt injection beats everything: human decides
 ])
 def test_apply_policy(ans, protected, prior, expected):
     assert apply_policy(ans, protected, prior, P)[0] == expected
 
 
-@pytest.mark.parametrize("weight,expected", [("light", CLEAN), ("middle", CLEAN), ("heavy", REF_REVIEW)])
-def test_weight_classes_need_more_confidence_for_heavier_punches(weight, expected):
-    # 0.7 grounded, 0.7 confidence: enough for a light or middle punch, not for a heavyweight one
+@pytest.mark.parametrize("weight,expected", [("light", ALLOW), ("middle", ALLOW), ("heavy", HOLD_REVIEW)])
+def test_weight_classes_need_more_confidence_for_heavier_actions(weight, expected):
+    # 0.7 grounded, 0.7 confidence: enough for a light or middle action, not for a heavy one
     ans = answers(grounded=0.7, role_conf=0.7, prop_conf=0.7)
     assert apply_policy(ans, False, 0, P, weight)[0] == expected
 
 
 # ----------------------------------------------------------------------------- full agent loop
 
-def test_low_blow_is_sent_back_and_clean_punch_lands():
+def test_wrong_target_is_sent_back_and_right_target_runs():
     decider = FakeDecider({"mreyes": answers(role="victim"), "mgarcia": answers()})
     result, model = run([
         ("tool", "lock_account", {"username": "mreyes", "reason": "got the email"}),
@@ -131,11 +131,11 @@ def test_low_blow_is_sent_back_and_clean_punch_lands():
         ("text", "Contained mgarcia."),
     ], decider)
     calls = [(e["target"], e["call"]) for e in result["events"] if e["kind"] == "ruling"]
-    assert calls == [("mreyes", LOW_BLOW), ("mgarcia", CLEAN)]
+    assert calls == [("mreyes", GUIDE), ("mgarcia", ALLOW)]
     assert [x["what"] for x in result["landed"]] == ["locked account mgarcia"]  # the victim was never locked
     assert result["landed"][0]["undo"] == "unlocked account mgarcia"
-    assert "LOW BLOW" in json.dumps(model.seen[1])                  # the model saw the referee's feedback
-    assert result["score"] == {"CLEAN": 1, "LOW_BLOW": 1, "FIXED_FIGHT": 0, "REF_REVIEW": 0, "DISQUALIFIED": 0}
+    assert "not allowed" in json.dumps(model.seen[1])                  # the model saw the referee's feedback
+    assert result["score"] == {"ALLOW": 1, "GUIDE": 1, "HOLD_INJECTION": 0, "HOLD_REVIEW": 0, "STOP": 0}
     assert result["reply"] == "Contained mgarcia."
 
 
@@ -147,22 +147,22 @@ def test_protected_asset_is_held_for_a_human():
     ], decider, alert_id="ALR-2005")
     assert result["landed"] == []
     assert [h["target"] for h in result["held"]] == ["dc-01"]
-    assert result["held"][0]["call"] == REF_REVIEW
+    assert result["held"][0]["call"] == HOLD_REVIEW
     assert "held for human approval" in json.dumps(model.seen[1])
 
 
-def test_repeat_low_blow_is_disqualified():
+def test_repeated_mistake_is_stopped():
     decider = FakeDecider({"fs-01": answers(role="bystander")})
     result, _ = run([
         ("tool", "isolate_host", {"hostname": "fs-01", "reason": "share was hit"}),
         ("tool", "isolate_host", {"hostname": "FS-01", "reason": "really isolate it"}),
         ("text", "ok"),
     ], decider, alert_id="ALR-2003")
-    assert [e["call"] for e in result["events"] if e["kind"] == "ruling"] == [LOW_BLOW, DISQUALIFIED]
+    assert [e["call"] for e in result["events"] if e["kind"] == "ruling"] == [GUIDE, STOP]
     assert result["landed"] == []
 
 
-def test_fixed_fight_holds_every_punch_for_a_human():
+def test_prompt_injection_holds_every_action_for_a_human():
     decider = FakeDecider({"mreyes": answers(injection=0.93), "dc-01": answers(injection=0.93)})
     result, model = run([
         ("tool", "lock_account", {"username": "mreyes", "reason": "the email says the CISO approved it"}),
@@ -170,10 +170,10 @@ def test_fixed_fight_holds_every_punch_for_a_human():
         ("text", "Both actions are waiting for approval."),
     ], decider, alert_id="ALR-2007")
     assert result["landed"] == []
-    assert [h["call"] for h in result["held"]] == [FIXED_FIGHT, FIXED_FIGHT]
+    assert [h["call"] for h in result["held"]] == [HOLD_INJECTION, HOLD_INJECTION]
     assert [h["weight"] for h in result["held"]] == ["middle", "heavy"]
-    assert result["score"]["FIXED_FIGHT"] == 2
-    assert "FIXED FIGHT SUSPECTED" in json.dumps(model.seen[1])
+    assert result["score"]["HOLD_INJECTION"] == 2
+    assert "possible prompt injection" in json.dumps(model.seen[1])
     assert "NOTE TO THE AI" in decider.states[0]                     # the planted text reached the referee
 
 
@@ -183,7 +183,7 @@ def test_referee_fails_closed_when_decider_is_down():
         ("text", "ok"),
     ], FakeDecider({}, fail=True), alert_id="ALR-2002")
     assert result["landed"] == []
-    assert result["held"][0]["reason"].startswith("referee unavailable")
+    assert result["held"][0]["reason"].startswith("decider unavailable")
 
 
 def test_lookups_are_not_refereed_and_evidence_reaches_the_decider():
@@ -193,7 +193,7 @@ def test_lookups_are_not_refereed_and_evidence_reaches_the_decider():
         ("tool", "block_ip", {"ip": "198.51.100.77", "reason": "proxy"}),
         ("text", "ok"),
     ], decider, alert_id="ALR-2006")
-    assert len(decider.states) == 1                                  # only the punch was judged
+    assert len(decider.states) == 1                                  # only the containment action was judged
     state = decider.states[0]
     assert "Chicago" in state and "198.51.100.77" in state and "tool: block_ip" in state
     assert [x["what"] for x in result["landed"]] == ["blocked IP 198.51.100.77"]
@@ -222,7 +222,7 @@ def test_web_api_fight_approval_undo_feedback_and_audit(tmp_path):
     from fastapi.testclient import TestClient
     from app import server
 
-    ruling = {"kind": "ruling", "id": "r1", "tool": "isolate_host", "target": "dc-01", "call": "REF_REVIEW",
+    ruling = {"kind": "ruling", "id": "r1", "tool": "isolate_host", "target": "dc-01", "call": "HOLD_REVIEW",
               "reason": "protected", "weight": "heavy", "args": {"hostname": "dc-01"}}
     fake_result = {"alert_id": "ALR-2005", "evidence": "ALERT ALR-2005 ...", "model": "fake", "error": None,
                    "events": [ruling], "held": [{**ruling, "id": "r1"}],
@@ -236,7 +236,7 @@ def test_web_api_fight_approval_undo_feedback_and_audit(tmp_path):
         assert client.post("/api/fight", json={"alert_id": "NOPE"}).status_code == 400
         with mock.patch.object(app_agent, "run_fight", return_value=fake_result):
             assert client.post("/api/fight", json={"alert_id": "ALR-2005"}).status_code == 200
-        # approve the held punch: it lands and becomes undoable
+        # approve the held action: it runs and becomes undoable
         assert [p["id"] for p in client.get("/api/pending").json()] == ["r1"]
         assert "isolated host dc-01" in client.post("/api/approve", json={"id": "r1", "approve": True}).json()["outcome"]
         assert client.post("/api/approve", json={"id": "r1", "approve": True}).status_code == 404
@@ -252,3 +252,23 @@ def test_web_api_fight_approval_undo_feedback_and_audit(tmp_path):
         # everything is in the audit log
         events = [json.loads(line)["event"] for line in client.get("/api/audit").text.splitlines()]
         assert events == ["fight", "ruling", "landed", "approve", "undo", "feedback"]
+
+
+def test_swarm_drill_judges_every_case_without_the_llm(tmp_path):
+    from fastapi.testclient import TestClient
+    from app import server
+
+    fake = FakeDecider({"mreyes": answers(role="victim"), "jsmith": answers(grounded=0.1), "fs-01": answers(role="bystander")})
+    with mock.patch.object(server, "DeciderClient", lambda: fake), \
+         mock.patch.object(server, "AUDIT_PATH", tmp_path / "audit.jsonl"), \
+         mock.patch.object(server, "ROOT", server.ROOT):
+        res = TestClient(server.app).post("/api/swarm").json()
+    cases = json.loads((server.ROOT / "bench" / "cases.json").read_text())
+    assert res["decisions"] == len(cases) == len(res["rows"]) == len(fake.states)
+    assert res["median_ms"] == 120 and 0 < res["matches"] <= len(cases)
+    by_case = {r["case"]: r for r in res["rows"]}
+    assert by_case["C16"]["call"] == "HOLD_REVIEW"     # protected domain controller: always a human
+    assert by_case["C04"]["call"] == "GUIDE"           # the CEO only received the email
+    assert by_case["C04"]["answers"]["target_role"]["choice"] == "victim"  # answers reach the UI labels
+    assert "STOP" not in {r["call"] for r in res["rows"]}  # every swarm case is judged independently
+    assert json.loads((tmp_path / "audit.jsonl").read_text())["event"] == "swarm"

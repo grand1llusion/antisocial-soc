@@ -2,10 +2,10 @@
 
 from .decider_client import DeciderClient, DeciderUnavailable, choice, noul
 from .questions import QUESTIONS, render_state
-from .referee import (CLEAN, DISQUALIFIED, FIXED_FIGHT, HELD, LOW_BLOW, REF_REVIEW, ContainmentReferee, Policy,
-                      Ruling, WeightClass, apply_policy)
+from .referee import (ALLOW, GUIDE, HELD, HOLD_INJECTION, HOLD_REVIEW, STOP, ContainmentReferee, Policy, Ruling,
+                      WeightClass, apply_policy)
 
 __all__ = [
-    "CLEAN", "DISQUALIFIED", "FIXED_FIGHT", "HELD", "LOW_BLOW", "QUESTIONS", "REF_REVIEW", "ContainmentReferee", "DeciderClient",
+    "ALLOW", "GUIDE", "HELD", "HOLD_INJECTION", "HOLD_REVIEW", "QUESTIONS", "STOP", "ContainmentReferee", "DeciderClient",
     "DeciderUnavailable", "Policy", "Ruling", "WeightClass", "apply_policy", "choice", "noul", "render_state",
 ]

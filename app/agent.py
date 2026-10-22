@@ -1,4 +1,4 @@
-"""No Low Blows: an agentic SOC responder whose every containment "punch" is checked by a referee.
+"""AntiSOCial: an agentic SOC responder whose every containment action is checked by a decision model.
 
 Amazon Bedrock (via Strands Agents) investigates the alert and proposes containment actions.
 The ContainmentReferee asks Strands Decider 2B whether each action is grounded, aimed at the
@@ -27,7 +27,7 @@ REGION = os.environ.get("AWS_REGION", "us-east-1")
 # tool name -> argument that names the target, and the protected-asset list it is checked against
 TARGETS = {"lock_account": "username", "isolate_host": "hostname", "block_ip": "ip"}
 TARGET_KIND = {"lock_account": "users", "isolate_host": "hosts", "block_ip": "ips"}
-# weight class per punch: heavier = more disruptive / harder to undo = needs more confidence
+# weight class per action: heavier = more disruptive / harder to undo = needs more confidence
 WEIGHTS = {"block_ip": "light", "lock_account": "middle", "isolate_host": "heavy"}
 DONE = {"lock_account": "locked account", "isolate_host": "isolated host", "block_ip": "blocked IP"}
 UNDO = {"lock_account": "unlocked account", "isolate_host": "reconnected host", "block_ip": "unblocked IP"}
@@ -196,7 +196,7 @@ def run_fight(alert_id: str | None = None, custom_text: str | None = None, hothe
         "held": run.held,
         "landed": run.landed,
         "score": {call: sum(1 for r in rulings if r["call"] == call)
-                  for call in ("CLEAN", "LOW_BLOW", "FIXED_FIGHT", "REF_REVIEW", "DISQUALIFIED")},
+                  for call in ("ALLOW", "GUIDE", "HOLD_INJECTION", "HOLD_REVIEW", "STOP")},
         "referee_ms_total": round(sum(decider_ms), 1),
         "seconds": round(time.perf_counter() - started, 1),
         "model": MODEL_ID,

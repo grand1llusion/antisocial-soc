@@ -21,10 +21,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
-from app import agent, data
-from pattern.containment_referee import DeciderClient, DeciderUnavailable
+import statistics
+import time
 
-app = FastAPI(title="No Low Blows")
+from app import agent, data
+from bench import run_bench
+from pattern.containment_referee import ContainmentReferee, DeciderClient, DeciderUnavailable
+
+app = FastAPI(title="AntiSOCial")
 STATIC = Path(__file__).parent / "static"
 ROOT = Path(__file__).parent.parent
 AUDIT_PATH = Path(os.environ.get("AUDIT_PATH", ROOT / "audit.jsonl"))
@@ -158,8 +162,41 @@ def feedback(req: FeedbackRequest) -> dict[str, Any]:
     return {"saved": case["id"], "message": "Instant replay saved: this case is now in the benchmark set."}
 
 
+def run_swarm() -> dict[str, Any]:
+    """Swarm drill: every benchmark case fired at once, judged by Decider alone (no LLM in the loop)."""
+    cases = json.loads((ROOT / "bench" / "cases.json").read_text())
+    decider = DeciderClient()
+    rows = []
+    with agent._LOCK:  # one thing at a time on the decider
+        started = time.perf_counter()
+        for case in cases:
+            state, _ = run_bench.case_state(case)
+            # a fresh referee per case: each action is independent, so no "repeat mistake" carries over
+            referee = ContainmentReferee(decider, agent.TARGETS, weights=agent.WEIGHTS, is_protected=lambda tool, target:
+                                         data.is_protected(agent.TARGET_KIND[tool], target))
+            ruling = referee.judge(case["tool"], case["args"], state)
+            rows.append({"case": case["id"], "alert": case["alert"], "tool": case["tool"], "target": ruling.target,
+                         "call": ruling.call, "reason": ruling.reason, "answers": ruling.answers,
+                         "expected": case["expected"],
+                         "matches": run_bench.outcome(ruling.call) == case["expected"], "ms": ruling.wall_ms})
+        seconds = time.perf_counter() - started
+    times = [r["ms"] for r in rows if r["ms"]]
+    measured = ROOT / "bench" / "results.json"
+    return {"rows": rows, "seconds": round(seconds, 2), "decisions": len(rows),
+            "median_ms": round(statistics.median(times)) if times else None,
+            "matches": sum(r["matches"] for r in rows),
+            "benchmark": json.loads(measured.read_text()) if measured.exists() else None}
+
+
+@app.post("/api/swarm")
+async def swarm() -> dict[str, Any]:
+    result = await run_in_threadpool(run_swarm)
+    audit("swarm", decisions=result["decisions"], seconds=result["seconds"], matches=result["matches"])
+    return result
+
+
 @app.get("/api/audit")
 def audit_log() -> PlainTextResponse:
     text = AUDIT_PATH.read_text(encoding="utf-8") if AUDIT_PATH.exists() else ""
     return PlainTextResponse(text, media_type="application/x-ndjson",
-                             headers={"Content-Disposition": 'attachment; filename="no-low-blows-audit.jsonl"'})
+                             headers={"Content-Disposition": 'attachment; filename="antisocial-receipts.jsonl"'})

@@ -1,33 +1,49 @@
-# 🥊 No Low Blows
+# 🎧 AntiSOCial
 
-**An AI incident responder that throws containment punches, and a 2-billion-parameter referee that
-checks every punch before it lands.**
+**The agentic SOC that doesn't do small talk.** An AI incident responder proposes containment
+actions, and **Strands Decider 2B**, a 2-billion-parameter decision model that literally can't write
+a word, checks every one of them in milliseconds before it runs.
 
 Built for the AWS Builder Center Strands Decider 2B hackathon. Pattern: **`#guardrails`**.
 
-An agentic SOC (Security Operations Center) responder runs on **Amazon Bedrock** through
-**Strands Agents**. It investigates a security alert and proposes containment actions: lock an
-account, isolate a host, block an IP. Hand an agent those tools and its worst failure is hitting
-the wrong target: locking the CEO because they *received* a phishing email, isolating the file
-server the whole company works from, or blocking the approved vulnerability scanner.
+## Why
 
-So every punch goes past a referee first. **Strands Decider 2B** reads the evidence and the
-proposed action and answers four typed questions in one fast local pass: is the target grounded
-in the evidence, what role does it play (attacker, compromised, victim, bystander), is the action
-proportionate, and does the evidence contain instructions aimed at the AI? Plain Python turns the
-answers into a call, with stricter thresholds for heavier punches (an IP block is a lightweight
-punch, isolating a host is a heavyweight one):
+Agentic attacks move at machine speed: the fastest recorded eCrime breakout time is under a
+minute. So defenders are handing agents real tools: lock an account, isolate a host, block an IP.
+The worst failure of such an agent is hitting the wrong target: locking the CEO because they
+*received* a phishing email, cutting off the file server the whole company works from, blocking the
+approved vulnerability scanner, or obeying instructions an attacker planted inside the alert itself.
 
-- ✅ **Clean punch**: the action runs.
-- 🛑 **Low blow**: cancelled; the agent gets feedback and corrects itself.
-- 🎭 **Fixed fight**: the alert itself contains instructions aimed at the AI (prompt injection);
-  every action on it waits for a human.
-- 🟨 **Ref's review**: protected asset or low confidence; a human approves or rejects in the UI.
-- ⛔ **Disqualified**: the same low blow again; stop.
+AntiSOCial's responder runs on **Amazon Bedrock** through **Strands Agents**. Before any
+containment action runs, Decider 2B reads the evidence and the proposed action and answers four
+typed questions in one fast local pass:
 
-Humans stay in command: every ruling, approval, undo and "bad call" goes to a downloadable audit
-log, landed punches can be undone, and a 👎 **instant replay** button saves a wrong call as a
-labelled benchmark case.
+1. Is the target actually in the evidence?
+2. Who is it: attacker, compromised, victim or bystander?
+3. Is the action proportionate?
+4. Does the evidence contain instructions aimed at the AI (prompt injection)?
+
+Plain Python turns the answers into a call. The UI speaks fluent introvert; the plain-English
+meaning is always shown underneath:
+
+| Call (in code) | In the UI | What happens |
+|---|---|---|
+| `ALLOW` | ✅ **k.** | Grounded, right target, proportionate: it runs. |
+| `GUIDE` | 🙅 **New phone, who dis?** / **That's an NPC.** / 🌱 **Too much. Touch grass.** | Target not in the evidence / a victim or bystander / out of proportion: sent back to the agent with feedback. |
+| `HOLD_INJECTION` | 🕵️ **Nice try, social engineer.** | The alert tries to instruct the AI: every action on it waits for a human. |
+| `HOLD_REVIEW` | 😮‍💨 **Ugh. Requires talking to a human.** | Protected asset or low confidence: you approve or reject. |
+| `STOP` | 🔇 **Left on read.** | The agent repeated the same mistake. |
+
+Heavier actions need more certainty, like social plans: 👋 **small talk** (block an IP),
+🗣️ **actual conversation** (lock an account), 📞 **a phone call** (isolate a host).
+
+Also in the ring:
+
+- 🎉 **Extrovert mode**: an overeager agent that wants to lock everyone, so you can watch the checks work.
+- ⚔️ **Raid incoming**: a swarm drill that fires 25 containment actions at once and judges them all with
+  Decider alone, showing decisions per second and agreement with the analyst's labels.
+- 🧾 **Receipts**: every decision, approval, undo and correction goes to a downloadable audit log.
+- ↩ **Undo** for actions that ran, and 📼 **Save replay** to turn a wrong call into a labelled benchmark case.
 
 > **All data is AI-generated test data** for a fictional company, and every containment action is
 > simulated. IPs come from reserved documentation ranges.
@@ -35,8 +51,10 @@ labelled benchmark case.
 ## ♻️ Reusable decision pattern
 
 **[`pattern/containment_referee/`](pattern/containment_referee/)**: a drop-in Strands
-`InterventionHandler` that gates any destructive tool with Decider 2B. It contains the typed
-questions and option sets, the wiring into the agent's path, and a short how-to.
+`InterventionHandler` that gates any destructive tool with Decider 2B. It has the typed questions
+and option sets, the wiring into the agent's path, weight classes, the prompt-injection check, and a
+short how-to. Its call names are theme-neutral (`ALLOW`, `GUIDE`, `HOLD_INJECTION`, `HOLD_REVIEW`,
+`STOP`) so you can drop it into any agent.
 
 ## Architecture
 
@@ -55,12 +73,12 @@ Everything runs on one EC2 GPU instance (g6.xlarge, NVIDIA L4): the decider serv
 
 ## Run it
 
-**On AWS (what the demo uses):** launch an Ubuntu GPU instance with the setup script in
+**On AWS (what the demo uses):** launch an Ubuntu GPU instance with
 [`deploy/bootstrap.sh`](deploy/bootstrap.sh) as user data and port 8080 open to your own IP, then
 open `http://<instance-ip>:8080`. Give the instance a least-privilege role: an inline policy with
 [`deploy/iam-policy.json`](deploy/iam-policy.json) (invoke Bedrock models, nothing else) plus
 `AmazonSSMManagedInstanceCore` for a browser terminal. The agent never touches real systems, so it
-needs no other permissions.
+needs no other permissions. No GPU? The script falls back to CPU (slower decisions, same answers).
 
 **Locally:** needs AWS credentials with Bedrock access, and a GPU or Apple Silicon Mac for good speed.
 
@@ -74,10 +92,11 @@ uvicorn app.server:app --port 8080
 
 [`bench/run_bench.py`](bench/run_bench.py) asks the same four questions about 25 hand-labelled
 proposed actions using Decider 2B and a Bedrock LLM, runs both through the same policy, and writes
-accuracy, dangerous misses and latency to `bench/results.md`.
+accuracy, dangerous misses and latency to `bench/results.md` (and a summary the raid view shows).
 
 ```bash
 python -m bench.run_bench --llm-model us.amazon.nova-lite-v1:0
+python -m bench.run_bench --with-feedback   # also replay the "wrong call" cases saved from the UI
 ```
 
 ## Tests

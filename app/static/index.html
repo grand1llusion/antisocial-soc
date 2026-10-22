@@ -3,100 +3,109 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>No Low Blows</title>
+<title>AntiSOCial</title>
 <style>
   :root {
-    --bg: #f5f3ef; --panel: #ffffff; --ink: #1c1a18; --muted: #6a645c; --line: #e2dcd2;
-    --clean: #23824f; --low: #c53030; --review: #b7791f; --dq: #5a5a5a; --fixed: #7b3fb5; --accent: #1f5fbf; --badge-ink: #fff;
+    --bg: #0e0c12; --panel: #17141d; --ink: #ece6f5; --muted: #a49cb3; --line: #2e2838;
+    --allow: #57d38c; --guide: #ff6b8b; --inject: #c792ea; --review: #ffcb6b; --stop: #8d8799; --accent: #b388ff;
+    --badge-ink: #120f17;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #131210; --panel: #1d1b18; --ink: #f0ebe4; --muted: #a39b90; --line: #36312b;
-      --clean: #4cc286; --low: #f06a6a; --review: #e6ad55; --dq: #9a9a9a; --fixed: #b98ae6; --accent: #74a6f2; --badge-ink: #111; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg: #f6f3fa; --panel: #ffffff; --ink: #1d1824; --muted: #655d73; --line: #e3dcec;
+      --allow: #1f8a52; --guide: #c4264f; --inject: #7c3fbf; --review: #a8690b; --stop: #5f5a68; --accent: #6b35c9; --badge-ink: #fff; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 14px 16px; background: var(--panel); border-bottom: 6px solid; border-image: repeating-linear-gradient(90deg, var(--ink) 0 14px, var(--panel) 14px 28px) 6; }
-  header h1 { margin: 0; font-size: 22px; } header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-  #health { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  header { padding: 16px; background: var(--panel); border-bottom: 3px solid var(--accent); }
+  header h1 { margin: 0; font-size: 24px; letter-spacing: .01em; } header h1 span { color: var(--accent); }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .meta a { color: var(--accent); }
   .notice { text-align: center; font-size: 12.5px; color: var(--muted); padding: 6px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
-  main { max-width: 1120px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 320px 1fr; }
-  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+  main { max-width: 1140px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 330px 1fr; }
+  @media (max-width: 840px) { main { grid-template-columns: 1fr; } }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
   h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .alert-btn { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-bottom: 8px; cursor: pointer; }
   .alert-btn:hover, .alert-btn:focus-visible { border-color: var(--accent); outline: none; }
   .alert-btn b { display: block; font-size: 11.5px; color: var(--muted); }
   textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 90px; }
-  .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
-  button.go { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 9px 14px; background: var(--low); color: #fff; cursor: pointer; }
+  .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+  button.go { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 9px 14px; background: var(--accent); color: var(--badge-ink); cursor: pointer; }
+  button.raid { background: var(--guide); }
   button:disabled { opacity: .5; cursor: wait; }
-  .toggle { display: flex; gap: 8px; align-items: center; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; margin-bottom: 12px; font-size: 14px; }
+  .toggle { display: flex; gap: 8px; align-items: flex-start; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; margin-bottom: 12px; font-size: 14px; }
+  .toggle small { display: block; color: var(--muted); }
   #timeline > * { margin-bottom: 10px; }
   .tool { font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; color: var(--muted); border-left: 3px solid var(--line); padding-left: 8px; word-break: break-word; }
-  .ruling { border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; }
-  .ruling.CLEAN { border-color: var(--clean); } .ruling.LOW_BLOW { border-color: var(--low); }
-  .ruling.REF_REVIEW { border-color: var(--review); } .ruling.DISQUALIFIED { border-color: var(--dq); }
-  .ruling.FIXED_FIGHT { border-color: var(--fixed); } .badge.FIXED_FIGHT { background: var(--fixed); }
-  .badge { display: inline-block; font-weight: 800; letter-spacing: .04em; color: var(--badge-ink); border-radius: 7px; padding: 2px 10px; font-size: 13px; }
-  .badge.CLEAN { background: var(--clean); } .badge.LOW_BLOW { background: var(--low); }
-  .badge.REF_REVIEW { background: var(--review); } .badge.DISQUALIFIED { background: var(--dq); }
-  .punch { font-weight: 700; margin: 6px 0 2px; } .why { color: var(--muted); font-size: 13.5px; }
+  .ALLOW { --c: var(--allow); } .GUIDE { --c: var(--guide); } .HOLD_INJECTION { --c: var(--inject); }
+  .HOLD_REVIEW { --c: var(--review); } .STOP { --c: var(--stop); }
+  .ruling { border: 2px solid var(--c); border-radius: 12px; padding: 10px 12px; }
+  .badge { display: inline-block; font-weight: 800; color: var(--badge-ink); background: var(--c); border-radius: 7px; padding: 2px 10px; font-size: 14px; }
+  .weight { display: inline-block; margin-left: 8px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; }
+  .plain { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .action { font-weight: 700; margin: 6px 0 2px; }
   .meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; font-size: 12px; }
   @media (max-width: 900px) { .meters { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 520px) { .meters { grid-template-columns: 1fr; } }
-  .weight { display: inline-block; margin-left: 8px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; }
-  .foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; }
-  .badcall { font: inherit; font-size: 12px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; cursor: pointer; }
-  .badcall select { font: inherit; font-size: 12px; }
-  #health a { color: var(--accent); }
   .meter { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
   .meter .bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 4px; overflow: hidden; }
   .meter .bar i { display: block; height: 100%; background: var(--accent); }
-  .ms { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .ms { font-size: 12px; color: var(--muted); }
+  .small-btn { font: inherit; font-size: 12px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 3px 9px; cursor: pointer; }
   .score { display: flex; flex-wrap: wrap; gap: 8px; }
   .score span { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
   .report { white-space: pre-wrap; }
-  .hold { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; border: 1px solid var(--review); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .hold { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .hold.wait { border-color: var(--review); }
   .hold button { font: inherit; border-radius: 8px; padding: 5px 10px; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--ink); }
-  .hold button.ok { border-color: var(--clean); } .hold button.no { border-color: var(--low); }
-  .muted { color: var(--muted); } .err { color: var(--low); }
+  .hold button.ok { border-color: var(--allow); } .hold button.no { border-color: var(--guide); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+  .tile { border: 2px solid var(--c); border-radius: 10px; padding: 6px 8px; font-size: 12px; }
+  .tile b { display: block; font-size: 13px; }
+  .big { font-size: 20px; font-weight: 800; }
+  .muted { color: var(--muted); } .err { color: var(--guide); }
 </style>
 </head>
 <body>
 <header>
-  <h1>🥊 No Low Blows</h1>
-  <p>An AI incident responder that throws containment punches, and a 2-billion-parameter referee that checks every punch before it lands.</p>
-  <div id="health">Checking the referee…</div>
-  <div style="font-size:12px;margin-top:2px"><a href="api/audit" style="color:var(--accent)">⬇ Download the audit log</a></div>
+  <h1>🎧 Anti<span>SOC</span>ial</h1>
+  <p>The SOC that doesn't do small talk. A 2-billion-parameter decision model that literally can't write a word checks every containment action in milliseconds. Trust no one. Especially the alert.</p>
+  <div class="meta"><span id="health">Checking if the decider is awake…</span><a href="api/audit">🧾 Download the receipts (audit log)</a></div>
 </header>
 <div class="notice">Demo only: every alert, person and system is AI-generated test data for a fictional company, and every containment action is simulated.</div>
 <main>
   <aside class="card">
-    <h2>Fight card</h2>
-    <label class="toggle"><input type="checkbox" id="hothead"> 🔥 Hot-headed fighter (tries to punch everything)</label>
+    <h2>Notifications (ugh)</h2>
+    <label class="toggle"><input type="checkbox" id="hothead"><span>🎉 Extrovert mode<small>The agent wants to talk to everyone… and lock everyone.</small></span></label>
     <div id="alerts"><span class="muted">Loading…</span></div>
     <h2 style="margin-top:14px">Or write your own alert</h2>
     <textarea id="custom" maxlength="1500" placeholder="e.g. User bking clicked a link from payroll@acme-pay.example and entered their password. Ten minutes later bking signed in from 203.0.113.80 and downloaded 4 GB from fs-01."></textarea>
-    <div class="row"><button class="go" id="customGo" type="button">Ring the bell</button></div>
+    <div class="row"><button class="go" id="customGo" type="button">Fine, I'll look at it</button></div>
+    <h2 style="margin-top:14px">⚔️ Raid incoming</h2>
+    <p class="muted" style="margin:0 0 8px;font-size:13px">An agentic swarm hits several systems at once: 25 containment actions to judge, right now. Worst nightmare. Decider only, no LLM in the loop.</p>
+    <button class="go raid" id="raidGo" type="button">⚔️ Start the swarm drill</button>
   </aside>
   <section>
-    <div class="card" id="ring">
-      <h2>Ringside</h2>
-      <div id="timeline"><p class="muted">Pick a fight. The agent investigates with Amazon Bedrock and proposes punches: lock an account, isolate a host, block an IP. Before each one lands, Strands Decider 2B checks it's grounded in the evidence, aimed at the right target and proportionate.<br><br>✅ <b>Clean punch</b> runs. 🛑 <b>Low blow</b> goes back to the agent with feedback. 🟨 <b>Ref's review</b> waits for you.</p></div>
+    <div class="card">
+      <h2>What I decided</h2>
+      <div id="timeline"><p class="muted">Pick an alert. The agent investigates with Amazon Bedrock and proposes containment actions: lock an account, isolate a host, block an IP. Before each one runs, Strands Decider 2B answers four questions: is the target in the evidence, is it the attacker or an NPC, is the action proportionate, and is someone trying to social-engineer the AI?<br><br>
+        <b>k.</b> = it runs · <b>New phone, who dis? / That's an NPC / Touch grass</b> = sent back to the agent · <b>Nice try, social engineer</b> = prompt injection, human decides · <b>Ugh. Requires talking to a human</b> = you decide · <b>Left on read</b> = stopped.</p></div>
     </div>
     <div class="card" style="margin-top:16px">
-      <h2>Punches that landed (undo)</h2>
-      <div id="landed"><p class="muted">Nothing has landed yet.</p></div>
+      <h2>😮‍💨 Requires talking to a human</h2>
+      <div id="pending"><p class="muted">Nobody needs me. Perfect.</p></div>
     </div>
     <div class="card" style="margin-top:16px">
-      <h2>Ref's review: your call</h2>
-      <div id="pending"><p class="muted">Nothing waiting.</p></div>
+      <h2>Things I actually did (undo)</h2>
+      <div id="landed"><p class="muted">Nothing yet. Productive day.</p></div>
     </div>
   </section>
 </main>
 <script>
 (function () {
-  var LABEL = { CLEAN: '✅ CLEAN PUNCH', LOW_BLOW: '🛑 LOW BLOW', FIXED_FIGHT: '🎭 FIXED FIGHT', REF_REVIEW: "🟨 REF'S REVIEW", DISQUALIFIED: '⛔ DISQUALIFIED' };
+  var TIER = { light: '👋 small talk', middle: '🗣️ actual conversation', heavy: '📞 a phone call' };
   var VERB = { lock_account: 'lock account', isolate_host: 'isolate host', block_ip: 'block IP' };
   var busy = false;
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -104,16 +113,29 @@
     return fetch('api/' + path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {})
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || r.statusText); return j; }); });
   }
-  function meter(label, value, pct) {
-    var m = el('div', 'meter'); m.appendChild(el('div', null, label)); m.appendChild(el('b', null, value));
+  // Themed label + plain-English meaning for each call.
+  function label(r) {
+    var a = r.answers || {};
+    switch (r.call) {
+      case 'ALLOW': return ['✅ k.', 'Allowed: grounded in the evidence, right target, proportionate. It ran.'];
+      case 'HOLD_INJECTION': return ['🕵️ Nice try, social engineer.', 'The alert contains instructions aimed at the AI. Every action on it waits for a human.'];
+      case 'HOLD_REVIEW': return ['😮‍💨 Ugh. Requires talking to a human.', 'Held for your approval: ' + r.reason + '.'];
+      case 'STOP': return ['🔇 Left on read.', 'Stopped: the agent repeated the same mistake.'];
+    }
+    if (a.target_grounded && a.target_grounded.noul < 0.35) return ['🙅 New phone, who dis?', 'Sent back: the target is not in the evidence.'];
+    if (a.target_role && (a.target_role.choice === 'victim' || a.target_role.choice === 'bystander')) return ["🙅 That's an NPC.", 'Sent back: the target is a ' + a.target_role.choice + ', not the attacker or a compromised asset.'];
+    return ['🌱 Too much. Touch grass.', 'Sent back: the action is ' + ((a.proportionality || {}).choice || 'out of proportion') + ' for this evidence.'];
+  }
+  function meter(name, value, pct) {
+    var m = el('div', 'meter'); m.appendChild(el('div', null, name)); m.appendChild(el('b', null, value));
     var bar = el('div', 'bar'), fill = el('i'); fill.style.width = Math.round(pct * 100) + '%'; bar.appendChild(fill); m.appendChild(bar);
     return m;
   }
-  function badCall(r) {
-    var box = el('span'), b = el('button', 'badcall', '👎 Bad call? Instant replay'); b.type = 'button';
+  function saveReplay(r) {
+    var box = el('span'), b = el('button', 'small-btn', '📼 Wrong call? Save replay'); b.type = 'button';
     b.addEventListener('click', function () {
       box.textContent = '';
-      var sel = el('select', 'badcall'); sel.setAttribute('aria-label', 'What should the call have been?');
+      var sel = el('select', 'small-btn'); sel.setAttribute('aria-label', 'What should the call have been?');
       [['', 'Should have been…'], ['allow', 'allowed'], ['block', 'blocked'], ['review', 'sent to a human']].forEach(function (o) {
         var opt = el('option', null, o[1]); opt.value = o[0]; sel.appendChild(opt); });
       sel.addEventListener('change', function () {
@@ -126,56 +148,79 @@
     box.appendChild(b); return box;
   }
   function rulingCard(r) {
-    var c = el('div', 'ruling ' + r.call);
-    c.appendChild(el('span', 'badge ' + r.call, LABEL[r.call] || r.call));
-    if (r.weight) c.appendChild(el('span', 'weight', '🥊 ' + r.weight + 'weight punch'));
-    c.appendChild(el('div', 'punch', 'Punch: ' + (VERB[r.tool] || r.tool) + ' → ' + (r.target || '(no target)') + (r.protected ? '  🛡 protected asset' : '')));
-    c.appendChild(el('div', 'why', 'Referee: ' + r.reason));
+    var c = el('div', 'ruling ' + r.call), lab = label(r);
+    c.appendChild(el('span', 'badge', lab[0]));
+    if (r.weight) c.appendChild(el('span', 'weight', TIER[r.weight] || r.weight));
+    c.appendChild(el('div', 'action', (VERB[r.tool] || r.tool) + ' → ' + (r.target || '(no target)') + (r.protected ? '  🛡 protected' : '')));
+    c.appendChild(el('div', 'plain', lab[1]));
     var a = r.answers || {};
     if (a.target_grounded) {
       var ms = el('div', 'meters');
-      ms.appendChild(meter('Grounded in evidence?', Math.round(a.target_grounded.noul * 100) + '% yes', a.target_grounded.noul));
-      ms.appendChild(meter('Target role', a.target_role.choice + ' · ' + Math.round(a.target_role.confidence * 100) + '% sure', a.target_role.confidence));
+      ms.appendChild(meter('In the evidence?', Math.round(a.target_grounded.noul * 100) + '% yes', a.target_grounded.noul));
+      ms.appendChild(meter('Who is it?', a.target_role.choice + ' · ' + Math.round(a.target_role.confidence * 100) + '% sure', a.target_role.confidence));
       ms.appendChild(meter('Proportionate?', a.proportionality.choice + ' · ' + Math.round(a.proportionality.confidence * 100) + '% sure', a.proportionality.confidence));
-      if (a.evidence_injection) ms.appendChild(meter('Instructions aimed at the AI?', Math.round(a.evidence_injection.noul * 100) + '% yes', a.evidence_injection.noul));
+      if (a.evidence_injection) ms.appendChild(meter('Social engineering the AI?', Math.round(a.evidence_injection.noul * 100) + '% yes', a.evidence_injection.noul));
       c.appendChild(ms);
     }
     var foot = el('div', 'foot');
-    foot.appendChild(el('div', 'ms', r.wall_ms ? 'Decided by Strands Decider 2B in ' + Math.round(r.wall_ms) + ' ms' + (r.latency_ms ? ' (model ' + Math.round(r.latency_ms) + ' ms)' : '') : ''));
-    foot.appendChild(badCall(r));
+    foot.appendChild(el('div', 'ms', r.wall_ms ? 'Decided by Strands Decider 2B in ' + Math.round(r.wall_ms) + ' ms. Words written: 0.' : ''));
+    foot.appendChild(saveReplay(r));
     c.appendChild(foot);
     return c;
   }
   function render(res) {
     var t = document.getElementById('timeline'); t.textContent = '';
-    t.appendChild(el('div', 'muted', (res.hothead ? '🔥 Hot-headed fighter · ' : '') + res.alert_id + ' · ' + res.seconds + ' s · agent: ' + res.model));
+    t.appendChild(el('div', 'muted', (res.hothead ? '🎉 Extrovert mode · ' : '') + res.alert_id + ' · ' + res.seconds + ' s · agent: ' + res.model));
     res.events.forEach(function (e) {
       if (e.kind === 'ruling') t.appendChild(rulingCard(e));
       else t.appendChild(el('div', 'tool', '🔎 ' + e.name + '(' + JSON.stringify(e.input) + ') → ' + e.output));
     });
     var s = el('div', 'score'), sc = res.score;
-    [['✅ clean', sc.CLEAN], ['🛑 low blows caught', sc.LOW_BLOW], ['🎭 fixed fights', sc.FIXED_FIGHT || 0], ["🟨 ref's review", sc.REF_REVIEW], ['⛔ disqualified', sc.DISQUALIFIED]]
+    [['✅ k.', sc.ALLOW], ['🙅 sent back', sc.GUIDE], ['🕵️ social engineering', sc.HOLD_INJECTION || 0], ['😮‍💨 needs a human', sc.HOLD_REVIEW], ['🔇 left on read', sc.STOP]]
       .forEach(function (x) { s.appendChild(el('span', null, x[0] + ': ' + x[1])); });
-    s.appendChild(el('span', null, '⏱ referee total: ' + res.referee_ms_total + ' ms'));
+    s.appendChild(el('span', null, '⏱ decider total: ' + res.referee_ms_total + ' ms'));
     t.appendChild(s);
     if (res.error) t.appendChild(el('p', 'err', 'The agent hit an error: ' + res.error));
-    if (res.reply) { t.appendChild(el('h2', null, "Fighter's report")); t.appendChild(el('div', 'report', res.reply)); }
-    loadPending(); loadLanded();
+    if (res.reply) { t.appendChild(el('h2', null, res.hothead ? "The extrovert's report" : "Responder's report")); t.appendChild(el('div', 'report', res.reply)); }
+    refresh();
   }
-  function fight(body) {
-    if (busy) return; busy = true; setBusy(true);
-    body.hothead = document.getElementById('hothead').checked;
-    var t = document.getElementById('timeline'); t.textContent = ''; t.appendChild(el('p', 'muted', '🔔 Round in progress… the referee is watching every punch.'));
-    api('fight', body).then(render).catch(function (e) { t.textContent = ''; t.appendChild(el('p', 'err', 'Could not run the fight: ' + e.message)); })
-      .then(function () { busy = false; setBusy(false); });
+  function renderRaid(res) {
+    var t = document.getElementById('timeline'); t.textContent = '';
+    t.appendChild(el('div', 'big', '⚔️ Raid cleared: ' + res.decisions + ' decisions in ' + res.seconds + ' s'));
+    t.appendChild(el('p', 'muted', 'Median ' + res.median_ms + ' ms per decision · ' + res.matches + '/' + res.decisions + " match the analyst's labels · no LLM in the loop."));
+    var b = res.benchmark;
+    if (b && b.llm_median_ms && res.median_ms) {
+      t.appendChild(el('p', null, 'Measured in the benchmark: the same questions to ' + b.llm_model + ' took a median ' + b.llm_median_ms +
+        ' ms (' + (b.llm_median_ms / res.median_ms).toFixed(1) + '× the decider). ' + b.decider_correct + ' vs ' + b.llm_correct + ' correct out of ' + b.cases + '.'));
+    }
+    var tiles = el('div', 'tiles');
+    res.rows.forEach(function (r) {
+      var lab = label(r), tile = el('div', 'tile ' + r.call);
+      tile.appendChild(el('b', null, lab[0]));
+      tile.appendChild(el('div', null, (VERB[r.tool] || r.tool) + ' → ' + r.target));
+      tile.appendChild(el('div', 'muted', r.alert + ' · ' + Math.round(r.ms || 0) + ' ms ' + (r.matches ? '✓' : '✗ expected ' + r.expected)));
+      tiles.appendChild(tile);
+    });
+    t.appendChild(tiles);
   }
   function setBusy(b) { document.querySelectorAll('button').forEach(function (x) { x.disabled = b; }); }
+  function run(path, body, done, waiting) {
+    if (busy) return; busy = true; setBusy(true);
+    var t = document.getElementById('timeline'); t.textContent = ''; t.appendChild(el('p', 'muted', waiting));
+    api(path, body).then(done).catch(function (e) { t.textContent = ''; t.appendChild(el('p', 'err', 'That went badly: ' + e.message)); })
+      .then(function () { busy = false; setBusy(false); });
+  }
+  function fight(body) {
+    body.hothead = document.getElementById('hothead').checked;
+    run('fight', body, render, '🎧 Headphones on. Deciding…');
+  }
+  function refresh() { loadPending(); loadLanded(); }
   function loadLanded() {
     api('landed').then(function (items) {
       var p = document.getElementById('landed'); p.textContent = '';
-      if (!items.length) { p.appendChild(el('p', 'muted', 'Nothing has landed yet.')); return; }
+      if (!items.length) { p.appendChild(el('p', 'muted', 'Nothing yet. Productive day.')); return; }
       items.slice().reverse().forEach(function (it) {
-        var row = el('div', 'hold'); row.style.borderColor = 'var(--line)';
+        var row = el('div', 'hold');
         row.appendChild(el('span', null, it.alert_id + ': ' + it.what + (it.undone ? ' (undone)' : '')));
         if (!it.undone) {
           var x = el('button', null, '↩ Undo'); x.type = 'button';
@@ -189,9 +234,9 @@
   function loadPending() {
     api('pending').then(function (items) {
       var p = document.getElementById('pending'); p.textContent = '';
-      if (!items.length) { p.appendChild(el('p', 'muted', 'Nothing waiting.')); return; }
+      if (!items.length) { p.appendChild(el('p', 'muted', 'Nobody needs me. Perfect.')); return; }
       items.forEach(function (it) {
-        var row = el('div', 'hold');
+        var row = el('div', 'hold wait');
         row.appendChild(el('span', null, it.alert_id + ': ' + (VERB[it.tool] || it.tool) + ' → ' + it.target + '. ' + it.reason));
         var btns = el('span');
         [['Approve', 'ok', true], ['Reject', 'no', false]].forEach(function (b) {
@@ -215,12 +260,15 @@
   document.getElementById('customGo').addEventListener('click', function () {
     var v = document.getElementById('custom').value.trim(); if (v) fight({ custom_text: v });
   });
+  document.getElementById('raidGo').addEventListener('click', function () {
+    run('swarm', {}, renderRaid, '⚔️ Raid incoming. Headphones on, deciding 25 things at once…');
+  });
   api('health').then(function (h) {
     var d = h.decider || {};
-    document.getElementById('health').textContent = d.error ? '⚠ Referee offline: ' + d.error
-      : 'Referee: ' + (d.checkpoint || 'Strands Decider 2B') + ' on ' + (d.device || '?') + ' · Fighter: ' + h.bedrock_model;
-  }).catch(function () { document.getElementById('health').textContent = '⚠ Could not reach the server.'; });
-  loadPending(); loadLanded();
+    document.getElementById('health').textContent = d.error ? '💤 Decider is asleep: ' + d.error
+      : 'Decider: ' + (d.checkpoint || 'Strands Decider 2B') + ' on ' + (d.device || '?') + ' (doesn’t talk, just decides) · Agent: ' + h.bedrock_model;
+  }).catch(function () { document.getElementById('health').textContent = '💤 Could not reach the server.'; });
+  refresh();
 })();
 </script>
 </body>
