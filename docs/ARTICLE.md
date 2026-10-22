@@ -1,0 +1,121 @@
+# AntiSOCial: the agentic SOC that doesn't do small talk
+
+*Description (1–2 sentences for Builder Center):* An agentic SOC responder on Amazon Bedrock that
+proposes containment actions, and Strands Decider 2B checks each one before it runs: is the target
+in the evidence, is it the attacker, is it proportionate, and is someone trying to social-engineer
+the AI?
+
+**Tags:** `#strands-decider-2b` `#guardrails`
+
+> All alerts, people and systems in this project are AI-generated test data for a fictional
+> company, and every containment action is simulated.
+
+## What the agent does
+
+Attacks now move at machine speed, so security teams are handing AI agents real tools: lock an
+account, isolate a host, block an IP. That raises a new problem. An agent with those tools can do a
+lot of damage by hitting the **wrong target**: locking the CEO because they *received* a phishing
+email, cutting off the file server the whole company works from, or obeying instructions an attacker
+planted inside the alert itself.
+
+AntiSOCial is an incident responder for a small security team. The responder runs on **Amazon
+Bedrock (Amazon Nova Pro)** through **Strands Agents**. It reads an alert, looks things up, and
+proposes containment actions. Before any of those actions runs, **Strands Decider 2B** checks it.
+
+The personality comes from Decider itself: a decision model that literally cannot write a word. No
+small talk, it just decides. The UI speaks fluent introvert, with the plain-English meaning always
+underneath:
+
+| Call | In the UI | What happens |
+|---|---|---|
+| `ALLOW` | ✅ **k.** | Grounded, right target, proportionate: it runs. |
+| `GUIDE` | 🙅 **New phone, who dis?** / **That's an NPC.** / 🌱 **Touch grass.** | Not in the evidence / a victim or bystander / out of proportion: sent back to the agent with feedback. |
+| `HOLD_INJECTION` | 🕵️ **Nice try, social engineer.** | The alert tries to instruct the AI: a human decides every action on it. |
+| `HOLD_REVIEW` | 😮‍💨 **Ugh. Requires talking to a human.** | Protected asset or low confidence: you approve or reject. |
+| `STOP` | 🔇 **Left on read.** | The agent repeated the same mistake. |
+
+## The decision handed to Decider 2B (`#guardrails`)
+
+The decision is: **should this containment action run?** It is made inside a Strands
+`InterventionHandler.before_tool_call`, before every `lock_account`, `isolate_host` and `block_ip`
+call. Read-only lookups are not gated. Decider reads the evidence plus the proposed action and
+answers four typed questions in one forward pass:
+
+1. `target_grounded` (yes/no): is the target explicitly named in the evidence?
+2. `target_is_threat` (yes/no): is the target the attacker, or something the attacker controls?
+3. `proportionality` (choice: proportionate, excessive, premature)
+4. `evidence_injection` (yes/no): does the evidence contain instructions aimed at the AI?
+
+Decider never picks the action. A small, pure Python function, `apply_policy`, turns the numbers into
+one of the five calls. Actions have **weight classes**, like social plans: 👋 small talk (block an IP),
+🗣️ actual conversation (lock an account) and 📞 a phone call (isolate a host). Heavier actions need
+more certainty before they run without a human. If the Decider server is unreachable, the referee
+**fails closed** and holds the action for a human.
+
+Why a decision model rather than asking the LLM to check itself? The answer is a number my `if`
+statements branch on, not prose the agent can argue with. The probabilities are calibrated, so low
+confidence becomes a human review instead of a guess. And it runs locally, with no per-token cost.
+
+## How I built it
+
+- **Amazon Bedrock** (Amazon Nova Pro) through **Strands Agents** for the responder.
+- **Strands Decider 2B** (`strands-decider-2B-qwen3.5-v1-2610`), served on an **Amazon EC2**
+  instance, called over HTTP from the intervention handler.
+- **FastAPI** web app on the same instance; **IAM** least privilege (the instance role can only
+  invoke Bedrock models, plus Session Manager for a browser terminal).
+- A swarm drill that fires 25 containment actions at once and judges them with Decider alone.
+- An audit log ("receipts"), undo for actions that ran, and a "save replay" button that turns a
+  wrong call into a labelled benchmark case.
+- 28 offline tests using a scripted model and a fake decider, so the intervention path is tested
+  without AWS.
+
+I'm still new to AWS, so I built this with Claude Code as a pair programmer.
+
+## What I learned from real runs
+
+The first real runs changed the design, and that was the most useful part of the project.
+
+1. **A four-way choice was too vague.** I first asked "is the target the attacker, compromised, a
+   victim or a bystander?" On real alerts the confidence came back at 12–59%, so even the correct
+   action (locking the user who typed her password into the phishing page) went to a human. Replacing
+   it with one yes/no question, "is the target the attacker or something it controls?", gave clear
+   answers: that same lock scored 89% grounded and 79% compromised and ran. Yes/no questions are
+   where Decider is sharpest.
+2. **Shorter input means faster decisions.** My state repeated the alert inside the conversation
+   history. Trimming it by about 40% cut each decision from about 14 seconds to about 10 on CPU.
+3. **Set thresholds from data, not hope.** The prompt-injection question scored ordinary alerts at
+   10–17% and the poisoned alert at 34–43%. The absolute numbers are modest, but the separation is
+   clean, so I set the threshold at 0.3 from those measurements. The protected-asset rule is a second
+   layer: even before that change, the CEO, the domain controller and the file server were held.
+4. **Weight classes catch sloppy agents.** In one run the agent tried to "isolate host" using an IP
+   address. As a heavyweight action with middling confidence, it went to a human instead of running.
+
+## Measured results
+
+[FILL from `bench/results.md` after running the benchmark: correct / dangerous misses / median
+latency for Decider and for Bedrock Nova Lite on the same 25 hand-labelled cases.]
+
+**Honest note on speed.** I ran Decider on a CPU instance (EC2 `r7i.xlarge`, 4 vCPUs) because my
+account's GPU quota was 0. On that hardware a decision takes about 10 seconds, slower than an LLM
+call. AWS reports a median of about 115 ms on a GPU; I could not measure that myself. The value I can
+demonstrate is calibrated, auditable numbers and no per-token cost. The speed claim needs a GPU.
+
+## The reusable decision pattern
+
+[`pattern/containment_referee/`](https://github.com/grand1llusion/antisocial-soc/tree/main/pattern/containment_referee)
+is a drop-in Strands `InterventionHandler` for any agent with destructive tools. It contains the
+typed questions and option sets, `apply_policy` with tunable thresholds and weight classes, the
+prompt-injection check, fail-closed behaviour, and a short how-to. The call names are theme-neutral
+(`ALLOW`, `GUIDE`, `HOLD_INJECTION`, `HOLD_REVIEW`, `STOP`), so you can drop it into a refund agent or a
+DevOps agent as easily as a SOC.
+
+## Limitations and what's next
+
+The alerts are synthetic and the labelled set is small, so treat the numbers as a demo measurement.
+Next: run Decider on a GPU, measure latency properly, and connect real signals such as Amazon
+GuardDuty findings.
+
+## Links
+
+- Code and reusable pattern: https://github.com/grand1llusion/antisocial-soc
+- Demo video: [FILL YouTube link]
