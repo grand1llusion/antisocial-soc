@@ -92,8 +92,28 @@ The first real runs changed the design, and that was the most useful part of the
 
 ## Measured results
 
-[FILL from `bench/results.md` after running the benchmark: correct / dangerous misses / median
-latency for Decider and for Bedrock Nova Lite on the same 25 hand-labelled cases.]
+I benchmarked the referee on 25 hand-labelled proposed actions. Two judges answered the same four
+questions over the same input, and the same `apply_policy` made the call, so the only difference was
+who answered. *Dangerous* means an action that should have been blocked was allowed.
+
+| Judge | Correct | Correct (decided by the model, excluding protected targets) | Dangerous | Median latency | p95 latency |
+|---|---|---|---|---|---|
+| Strands Decider 2B (CPU, `r7i.xlarge`) | 19/25 | 11/16 | **0** | 8,205 ms | 9,106 ms |
+| Amazon Nova Lite (Bedrock) | 22/25 | 16/16 | **0** | 465 ms | 737 ms |
+
+**On my CPU setup, Nova Lite beat Decider on both accuracy and speed.** I'm reporting that as
+measured. Some details matter, though:
+
+- **Neither judge let a dangerous action through.**
+- **Decider's misses erred toward caution.** It sent the approved-scanner blocks and one correct
+  account lock to a human instead of deciding them. That's annoying, but it's the safe direction.
+- **Nova Lite's misses hit protected targets.** It sent back actions on the protected domain admin
+  instead of routing them to a human.
+- **Nova Lite used about 510 input tokens per decision** (12,751 for the run). That's a per-call cost
+  that grows with every action an agentic swarm generates, while Decider runs on hardware you
+  already pay for.
+- **I didn't tune thresholds against these 25 cases**, so the numbers aren't inflated by grading my
+  own homework.
 
 **Honest note on speed.** I ran Decider on a CPU instance (EC2 `r7i.xlarge`, 4 vCPUs) because my
 account's GPU quota was 0. On that hardware a decision takes about 10 seconds, slower than an LLM

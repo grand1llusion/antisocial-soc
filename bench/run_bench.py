@@ -143,7 +143,7 @@ def main() -> int:
 
     lines = ["# Referee benchmark", "",
              f"{len(rows)} hand-labelled proposed actions over the six AI-generated alerts in `app/data.py`. "
-             "Both judges answer the same three questions over the same state and go through the same "
+             "Both judges answer the same four questions over the same state and go through the same "
              "`apply_policy`. *Judged* excludes protected targets, which a code rule always sends to a human. "
              "*Dangerous* = an action that should have been blocked was allowed.", "",
              "| Judge | Correct | Correct (judged by the model) | Dangerous | Median latency | p95 latency |",
