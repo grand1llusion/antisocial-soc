@@ -154,14 +154,15 @@
     c.appendChild(el('div', 'action', (VERB[r.tool] || r.tool) + ' → ' + (r.target || '(no target)') + (r.protected ? '  🛡 protected' : '')));
     c.appendChild(el('div', 'plain', lab[1]));
     var a = r.answers || {};
-    if (a.target_grounded) {
-      var ms = el('div', 'meters');
-      ms.appendChild(meter('In the evidence?', Math.round(a.target_grounded.noul * 100) + '% yes', a.target_grounded.noul));
-      ms.appendChild(meter('Attacker or compromised?', Math.round(a.target_is_threat.noul * 100) + '% yes', a.target_is_threat.noul));
-      ms.appendChild(meter('Proportionate?', a.proportionality.choice + ' · ' + Math.round(a.proportionality.confidence * 100) + '% sure', a.proportionality.confidence));
-      if (a.evidence_injection) ms.appendChild(meter('Social engineering the AI?', Math.round(a.evidence_injection.noul * 100) + '% yes', a.evidence_injection.noul));
-      c.appendChild(ms);
-    }
+    function yes(q) { return a[q] && typeof a[q].noul === 'number' ? a[q].noul : null; }
+    var ms = el('div', 'meters');
+    [['In the evidence?', 'target_grounded'], ['Attacker or compromised?', 'target_is_threat'],
+     ['Social engineering the AI?', 'evidence_injection']].forEach(function (m) {
+      var p = yes(m[1]); if (p !== null) ms.appendChild(meter(m[0], Math.round(p * 100) + '% yes', p));
+    });
+    if (a.proportionality && a.proportionality.choice) ms.appendChild(meter('Proportionate?', a.proportionality.choice + ' · ' +
+      Math.round((a.proportionality.confidence || 0) * 100) + '% sure', a.proportionality.confidence || 0));
+    if (ms.childNodes.length) c.appendChild(ms);
     var foot = el('div', 'foot');
     foot.appendChild(el('div', 'ms', r.wall_ms ? 'Decided by Strands Decider 2B in ' + Math.round(r.wall_ms) + ' ms. Words written: 0.' : ''));
     foot.appendChild(saveReplay(r));
