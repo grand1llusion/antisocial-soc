@@ -60,7 +60,8 @@ confidence becomes a human review instead of a guess. And it runs locally, with 
 
 - **Amazon Bedrock** (Amazon Nova Pro) through **Strands Agents** for the responder.
 - **Strands Decider 2B** (`strands-decider-2B-qwen3.5-v1-2610`), served on an **Amazon EC2**
-  instance, called over HTTP from the intervention handler.
+  GPU instance (`g4dn.xlarge`, NVIDIA T4), called over HTTP from the intervention handler. I
+  started on a CPU instance and measured both.
 - **FastAPI** web app on the same instance; **IAM** least privilege (the instance role can only
   invoke Bedrock models, plus Session Manager for a browser terminal).
 - A swarm drill that fires 25 containment actions at once and judges them with Decider alone.
@@ -93,17 +94,19 @@ The first real runs changed the design, and that was the most useful part of the
 ## Measured results
 
 I benchmarked the referee on 25 hand-labelled proposed actions. Two judges answered the same four
-questions over the same input, and the same `apply_policy` made the call, so the only difference was
+questions over the same input (Decider measured twice: on CPU, then on a GPU), and the same `apply_policy` made the call, so the only difference was
 who answered. *Dangerous* means an action that should have been blocked was allowed.
 
 | Judge | Correct | Correct (decided by the model, excluding protected targets) | Dangerous | Median latency | p95 latency |
 |---|---|---|---|---|---|
+| Strands Decider 2B (GPU, `g4dn.xlarge`, NVIDIA T4) | 19/25 | 11/16 | **0** | 984 ms | 1,122 ms |
 | Strands Decider 2B (CPU, `r7i.xlarge`) | 19/25 | 11/16 | **0** | 8,205 ms | 9,106 ms |
-| Amazon Nova Lite (Bedrock) | 22/25 | 16/16 | **0** | 465 ms | 737 ms |
+| Amazon Nova Lite (Bedrock) | 22/25 | 16/16 | **0** | 478 ms | 590 ms |
 
-**On my CPU setup, Nova Lite beat Decider on both accuracy and speed.** Full per-case results are in
-[`bench/results.md`](https://github.com/grand1llusion/antisocial-soc/blob/main/bench/results.md). I'm reporting that as
-measured. Some details matter, though:
+**Nova Lite beat Decider on accuracy, and on speed even with Decider on a GPU.** Full per-case
+results are in [`bench/results.md`](https://github.com/grand1llusion/antisocial-soc/blob/main/bench/results.md) (GPU)
+and [`bench/results-cpu.md`](https://github.com/grand1llusion/antisocial-soc/blob/main/bench/results-cpu.md). I'm
+reporting that as measured. Some details matter, though:
 
 - **Neither judge let a dangerous action through.**
 - **All six of Decider's misses went to a human.** It never wrongly allowed and never wrongly
@@ -120,10 +123,14 @@ measured. Some details matter, though:
 - **I didn't tune thresholds against these 25 cases**, so the numbers aren't inflated by grading my
   own homework.
 
-**Honest note on speed.** I ran Decider on a CPU instance (EC2 `r7i.xlarge`, 4 vCPUs) because my
-account's GPU quota was 0. On that hardware a decision takes about 10 seconds, slower than an LLM
-call. AWS reports a median of about 115 ms on a GPU; I could not measure that myself. The value I can
-demonstrate is calibrated, auditable numbers and no per-token cost. The speed claim needs a GPU.
+**Honest note on speed.** I started on a CPU instance (EC2 `r7i.xlarge`) because my account's GPU
+quota was 0, and a decision took about 8 seconds. Once the quota was raised, the newer GPU types
+had no capacity in my Availability Zone, so I used a `g4dn.xlarge` with an NVIDIA T4, the oldest and
+cheapest GPU option. The same 25 cases ran about **8× faster (median 984 ms)** and **every call came
+out the same**. That's still about twice Nova Lite's latency, and well above the ~115 ms AWS reports
+on a newer GPU. I also skipped Decider's optional CUDA kernels, which don't support the T4's
+generation. So my numbers are a floor, not a ceiling: a modern GPU should close the gap, but I
+haven't measured that.
 
 ## The reusable decision pattern
 
@@ -137,7 +144,7 @@ DevOps agent as easily as a SOC.
 ## Limitations and what's next
 
 The alerts are synthetic and the labelled set is small, so treat the numbers as a demo measurement.
-Next: run Decider on a GPU, measure latency properly, and connect real signals such as Amazon
+Next: measure Decider on a current-generation GPU with its CUDA kernels, and connect real signals such as Amazon
 GuardDuty findings.
 
 ## Links
