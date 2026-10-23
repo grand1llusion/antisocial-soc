@@ -127,7 +127,7 @@ reporting that as measured. Some details matter, though:
 quota was 0, and a decision took about 8 seconds. Once the quota was raised, the newer GPU types
 had no capacity in my Availability Zone, so I used a `g4dn.xlarge` with an NVIDIA T4, the oldest and
 cheapest GPU option. The same 25 cases ran about **8× faster (median 984 ms)** and **every call came
-out the same**. That's still about twice Nova Lite's latency, and well above the ~115 ms AWS reports
+out the same**, with no probability moving by more than 0.01. That's still about twice Nova Lite's latency, and well above the ~115 ms AWS reports
 on a newer GPU. I also skipped Decider's optional CUDA kernels, which don't support the T4's
 generation. So my numbers are a floor, not a ceiling: a modern GPU should close the gap, but I
 haven't measured that.
