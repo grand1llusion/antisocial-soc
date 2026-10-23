@@ -150,4 +150,4 @@ GuardDuty findings.
 ## Links
 
 - Code and reusable pattern: https://github.com/grand1llusion/antisocial-soc
-- Demo video: [FILL YouTube link]
+- Demo video: https://www.youtube.com/watch?v=pM7DzrvjEMY

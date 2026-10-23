@@ -2,7 +2,9 @@
 
 **The agentic SOC that doesn't do small talk.** An AI incident responder proposes containment
 actions, and **Strands Decider 2B**, a 2-billion-parameter decision model that literally can't write
-a word, checks every one of them in milliseconds before it runs.
+a word, checks every one of them in under a second before it runs.
+
+▶️ **Demo video:** https://www.youtube.com/watch?v=pM7DzrvjEMY
 
 Built for the AWS Builder Center Strands Decider 2B hackathon. Pattern: **`#guardrails`**.
 
@@ -19,7 +21,7 @@ containment action runs, Decider 2B reads the evidence and the proposed action a
 typed questions in one fast local pass:
 
 1. Is the target actually in the evidence?
-2. Who is it: attacker, compromised, victim or bystander?
+2. Is it the attacker, or something the attacker controls (not a victim or bystander)?
 3. Is the action proportionate?
 4. Does the evidence contain instructions aimed at the AI (prompt injection)?
 
