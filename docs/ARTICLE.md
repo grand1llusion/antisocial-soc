@@ -36,7 +36,9 @@ underneath:
 
 ## The decision handed to Decider 2B (`#guardrails`)
 
-The decision is: **should this containment action run?** It is made inside a Strands
+This is the hackathon's **guardrails** pattern: before a tool call, check that its arguments are
+grounded in the real input (here, the alert evidence) and not invented, misread or planted by an
+attacker. The decision is: **should this containment action run?** It is made inside a Strands
 `InterventionHandler.before_tool_call`, before every `lock_account`, `isolate_host` and `block_ip`
 call. Read-only lookups are not gated. Decider reads the evidence plus the proposed action and
 answers four typed questions in one forward pass:
@@ -84,8 +86,8 @@ The first real runs changed the design, and that was the most useful part of the
    where Decider is sharpest.
 2. **Shorter input means faster decisions.** My state repeated the alert inside the conversation
    history. Trimming it by about 40% cut each decision from about 14 seconds to about 10 on CPU.
-3. **Set thresholds from data, not hope.** The prompt-injection question scored ordinary alerts at
-   10–17% and the poisoned alert at 34–43%. The absolute numbers are modest, but the separation is
+3. **Set thresholds from data, not hope.** In my first live runs, the prompt-injection question
+   scored ordinary alerts at 10–17% and the poisoned alert at 34–43%. The absolute numbers are modest, but the separation is
    clean, so I set the threshold at 0.3 from those measurements. The protected-asset rule is a second
    layer: even before that change, the CEO, the domain controller and the file server were held.
 4. **Weight classes catch sloppy agents.** In one run the agent tried to "isolate host" using an IP
