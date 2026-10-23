@@ -58,6 +58,10 @@ and option sets, the wiring into the agent's path, weight classes, the prompt-in
 short how-to. Its call names are theme-neutral (`ALLOW`, `GUIDE`, `HOLD_INJECTION`, `HOLD_REVIEW`,
 `STOP`) so you can drop it into any agent.
 
+📓 **Try it in a notebook:** [`notebooks/containment_referee_quickstart.ipynb`](notebooks/containment_referee_quickstart.ipynb)
+walks through the questions, the state, the policy and four real calls. It runs without AWS: it asks a
+live Decider server if one is reachable, otherwise it replays the answers Decider gave in the GPU benchmark.
+
 ## Architecture
 
 ```
