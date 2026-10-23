@@ -4,15 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AntiSOCial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Permanent+Marker&family=Space+Mono:wght@400;700&display=swap">
 <style>
   :root {
     --bg: #0e0c12; --panel: #17141d; --ink: #ece6f5; --muted: #a49cb3; --line: #2e2838;
     --allow: #57d38c; --guide: #ff6b8b; --inject: #c792ea; --review: #ffcb6b; --stop: #8d8799; --accent: #b388ff;
     --badge-ink: #120f17;
-  }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) { --bg: #f6f3fa; --panel: #ffffff; --ink: #1d1824; --muted: #655d73; --line: #e3dcec;
-      --allow: #1f8a52; --guide: #c4264f; --inject: #7c3fbf; --review: #a8690b; --stop: #5f5a68; --accent: #6b35c9; --badge-ink: #fff; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -66,6 +65,53 @@
   .tile b { display: block; font-size: 13px; }
   .big { font-size: 20px; font-weight: 800; }
   .muted { color: var(--muted); } .err { color: var(--guide); }
+  /* Do Not Disturb zine: show-flyer type, taped-on stickers, hard shadows. */
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&family=Permanent+Marker&display=swap');
+:root, :root:not([data-theme="dark"]) {
+  --bg:#0d0d0d; --panel:#161616; --ink:#f4efe6; --muted:#a39d93; --line:#333;
+  --allow:#c6ff3d; --guide:#ff2e63; --inject:#a970ff; --review:#ffd400; --stop:#9c9c9c; --accent:#ff2e63; --badge-ink:#0d0d0d;
+}
+body { font:15px/1.5 'Space Mono', monospace; background:
+  radial-gradient(circle at 1px 1px, rgba(255,255,255,.07) 1px, transparent 0) 0 0/6px 6px, #0d0d0d; }
+header { background:#ff2e63; color:#0d0d0d; border:0; padding:22px 24px 18px; transform:rotate(-.6deg); margin:14px 10px 6px; box-shadow:6px 6px 0 #0d0d0d, 6px 6px 0 2px #f4efe6; }
+header h1 { font:400 64px/0.9 Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.01em; }
+header h1 span { color:#f4efe6; -webkit-text-stroke:2px #0d0d0d; }
+header p { color:#0d0d0d; font-weight:700; max-width:760px; }
+.meta, .meta a { color:#0d0d0d; } .meta a { background:#0d0d0d; color:#ffd400; padding:0 6px; text-decoration:none; }
+.notice { background:transparent; border:0; color:#a39d93; }
+main { max-width:1200px; grid-template-columns:340px 1fr; gap:22px; }
+.card { border:2px solid #f4efe6; border-radius:0; background:#161616; box-shadow:5px 5px 0 #f4efe6; }
+h2 { font:400 24px/1 Anton, sans-serif; letter-spacing:.02em; color:#f4efe6; text-transform:uppercase; }
+h2::after { content:""; display:block; width:56px; height:5px; background:#ff2e63; margin-top:6px; }
+.alert-btn { border:2px solid #333; border-radius:0; font-weight:700; }
+.alert-btn:nth-child(odd) { transform:rotate(-.5deg); } .alert-btn:nth-child(even) { transform:rotate(.5deg); }
+.alert-btn:hover { border-color:#ffd400; background:#ffd400; color:#0d0d0d; } .alert-btn:hover b { color:#0d0d0d; }
+button.go { font:400 18px Anton, sans-serif; letter-spacing:.04em; text-transform:uppercase; border-radius:0; border:2px solid #f4efe6; background:#ffd400; color:#0d0d0d; box-shadow:4px 4px 0 #f4efe6; padding:8px 16px; }
+button.raid { background:#ff2e63; }
+.toggle { border:2px dashed #a970ff; border-radius:0; }
+textarea { border-radius:0; border:2px solid #333; }
+.tool { border-left:3px dotted #555; }
+.ruling { border:2px solid var(--c); border-radius:0; background:#111; box-shadow:6px 6px 0 var(--c); position:relative; padding:14px 14px 12px; }
+.badge { font:400 30px/1 'Permanent Marker', cursive; background:var(--c); color:#0d0d0d; border-radius:0; padding:6px 14px 4px; transform:rotate(-2.5deg); box-shadow:3px 3px 0 #0d0d0d; position:relative; }
+.badge::before { content:""; position:absolute; top:-9px; left:50%; width:58px; height:16px; margin-left:-29px; background:rgba(244,239,230,.55); transform:rotate(4deg); }
+.weight { border-radius:0; border:2px solid #f4efe6; color:#f4efe6; font-weight:700; }
+.action { font:400 22px Anton, sans-serif; letter-spacing:.02em; text-transform:uppercase; }
+.meter { border-radius:0; border:2px solid #333; }
+.meter b { color:var(--c); }
+.meter .bar { height:10px; border-radius:0; background:#222; } .meter .bar i { background:var(--c); }
+.small-btn, .hold button { border-radius:0; border:2px solid #f4efe6; color:#f4efe6; }
+.score span { border-radius:0; border:2px solid #333; }
+.hold { border-radius:0; border:2px solid #333; }
+.tile { border-radius:0; box-shadow:3px 3px 0 var(--c); }
+.tile:nth-child(3n) { transform:rotate(-1deg); } .tile:nth-child(3n+1) { transform:rotate(.8deg); }
+.big { font:400 34px Anton, sans-serif; text-transform:uppercase; color:#ffd400; }
+header h1 { margin-bottom:12px; }
+@media (max-width: 840px) { main { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  header { margin: 10px 6px 4px; padding: 16px; transform: none; }
+  header h1 { font-size: 44px; }
+  .badge { font-size: 22px; }
+}
 </style>
 </head>
 <body>
@@ -91,7 +137,7 @@
     <div class="card">
       <h2>What I decided</h2>
       <div id="timeline"><p class="muted">Pick an alert. The agent investigates with Amazon Bedrock and proposes containment actions: lock an account, isolate a host, block an IP. Before each one runs, Strands Decider 2B answers four questions: is the target in the evidence, is it the attacker or just an NPC, is the action proportionate, and is someone trying to social-engineer the AI?<br><br>
-        <b>k.</b> = it runs · <b>New phone, who dis? / That's an NPC / Touch grass</b> = sent back to the agent · <b>Nice try, social engineer</b> = prompt injection, human decides · <b>Ugh. Requires talking to a human</b> = you decide · <b>Left on read</b> = stopped.</p></div>
+        <b>k.</b> = it runs · <b>New phone, who dis? / That's an NPC / Way too much</b> = sent back to the agent · <b>Nice try, social engineer</b> = prompt injection, human decides · <b>Ugh. Requires talking to a human</b> = you decide · <b>Left on read</b> = stopped.</p></div>
     </div>
     <div class="card" style="margin-top:16px">
       <h2>😮‍💨 Requires talking to a human</h2>
@@ -124,7 +170,7 @@
     }
     if (a.target_grounded && a.target_grounded.noul < 0.35) return ['🙅 New phone, who dis?', 'Sent back: the target is not in the evidence.'];
     if (a.target_is_threat && a.target_is_threat.noul < 0.35) return ["🙅 That's an NPC.", 'Sent back: the target looks like a victim or bystander, not the attacker or a compromised asset.'];
-    return ['🌱 Too much. Touch grass.', 'Sent back: the action is ' + ((a.proportionality || {}).choice || 'out of proportion') + ' for this evidence.'];
+    return ['🙄 Way too much.', 'Sent back: the action is ' + ((a.proportionality || {}).choice || 'out of proportion') + ' for this evidence.'];
   }
   function meter(name, value, pct) {
     var m = el('div', 'meter'); m.appendChild(el('div', null, name)); m.appendChild(el('b', null, value));

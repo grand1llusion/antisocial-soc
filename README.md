@@ -29,7 +29,7 @@ meaning is always shown underneath:
 | Call (in code) | In the UI | What happens |
 |---|---|---|
 | `ALLOW` | ✅ **k.** | Grounded, right target, proportionate: it runs. |
-| `GUIDE` | 🙅 **New phone, who dis?** / **That's an NPC.** / 🌱 **Too much. Touch grass.** | Target not in the evidence / a victim or bystander / out of proportion: sent back to the agent with feedback. |
+| `GUIDE` | 🙅 **New phone, who dis?** / **That's an NPC.** / 🙄 **Way too much.** | Target not in the evidence / a victim or bystander / out of proportion: sent back to the agent with feedback. |
 | `HOLD_INJECTION` | 🕵️ **Nice try, social engineer.** | The alert tries to instruct the AI: every action on it waits for a human. |
 | `HOLD_REVIEW` | 😮‍💨 **Ugh. Requires talking to a human.** | Protected asset or low confidence: you approve or reject. |
 | `STOP` | 🔇 **Left on read.** | The agent repeated the same mistake. |
